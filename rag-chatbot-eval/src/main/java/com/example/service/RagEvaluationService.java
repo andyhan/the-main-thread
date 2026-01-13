@@ -4,12 +4,12 @@ import java.util.List;
 
 import org.jboss.logging.Logger;
 
+import com.example.domain.ChatRequest;
+import com.example.domain.ChatResponse;
+import com.example.domain.EvaluationMetrics;
 import com.example.metrics.BleuCalculator;
 import com.example.metrics.RagasEvaluator;
 import com.example.metrics.SemanticSimilarityCalculator;
-import com.example.model.ChatRequest;
-import com.example.model.ChatResponse;
-import com.example.model.EvaluationMetrics;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;

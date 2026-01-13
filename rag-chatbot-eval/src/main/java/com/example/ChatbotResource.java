@@ -2,8 +2,8 @@ package com.example;
 
 import org.jboss.logging.Logger;
 
-import com.example.model.ChatRequest;
-import com.example.model.ChatResponse;
+import com.example.domain.ChatRequest;
+import com.example.domain.ChatResponse;
 import com.example.service.RagEvaluationService;
 
 import jakarta.inject.Inject;
