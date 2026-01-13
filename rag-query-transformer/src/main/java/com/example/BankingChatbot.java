@@ -4,9 +4,11 @@ import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
 import io.quarkiverse.langchain4j.RegisterAiService;
+import jakarta.enterprise.context.ApplicationScoped;
 
 @RegisterAiService() // no need to declare a retrieval augmentor here, it is automatically generated
                      // and discovered
+@ApplicationScoped
 public interface BankingChatbot {
 
     @SystemMessage("""

@@ -14,8 +14,6 @@ import java.util.Objects;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.memory.ChatMemory;
-import dev.langchain4j.memory.chat.ChatMemoryProvider;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.model.input.PromptTemplate;
@@ -47,16 +45,14 @@ public class StandaloneQueryTransformer implements QueryTransformer {
 
     protected final PromptTemplate promptTemplate;
     protected final ChatModel chatModel;
-    protected final ChatMemoryProvider chatMemoryProvider;
 
     @Inject
-    public StandaloneQueryTransformer(ChatModel chatModel, ChatMemoryProvider chatMemoryProvider) {
-        this(chatModel, chatMemoryProvider, DEFAULT_PROMPT_TEMPLATE);
+    public StandaloneQueryTransformer(ChatModel chatModel) {
+        this(chatModel, DEFAULT_PROMPT_TEMPLATE);
     }
 
-    public StandaloneQueryTransformer(ChatModel chatModel, ChatMemoryProvider chatMemoryProvider, PromptTemplate promptTemplate) {
+    public StandaloneQueryTransformer(ChatModel chatModel, PromptTemplate promptTemplate) {
         this.chatModel = ensureNotNull(chatModel, "chatModel");
-        this.chatMemoryProvider = ensureNotNull(chatMemoryProvider, "chatMemoryProvider");
         this.promptTemplate = getOrDefault(promptTemplate, DEFAULT_PROMPT_TEMPLATE);
     }
 
@@ -67,35 +63,7 @@ public class StandaloneQueryTransformer implements QueryTransformer {
 
         long startTime = System.currentTimeMillis();
 
-        // Try to get chat memory from query metadata first
         List<ChatMessage> chatMemory = query.metadata() != null ? query.metadata().chatMemory() : null;
-        
-        // If metadata chatMemory is empty, try to retrieve from ChatMemoryProvider using memoryId
-        if ((chatMemory == null || chatMemory.isEmpty()) && query.metadata() != null) {
-            Object memoryIdObj = query.metadata().chatMemoryId();
-            if (memoryIdObj != null) {
-                String memoryId = memoryIdObj.toString();
-                try {
-                    ChatMemory memory = chatMemoryProvider.get(memoryId);
-                    if (memory != null) {
-                        chatMemory = memory.messages();
-                        LOG.debugf("Retrieved chat memory from ChatMemoryProvider for memoryId: %s, messages: %d", memoryId, chatMemory.size());
-                    }
-                } catch (Exception e) {
-                    LOG.debugf("Failed to retrieve chat memory for memoryId %s: %s", memoryId, e.getMessage());
-                }
-            }
-        }
-        
-        // Debug: log metadata information
-        if (query.metadata() != null) {
-            LOG.debugf("Query metadata present: %s", query.metadata());
-            LOG.debugf("Query metadata chatMemoryId: %s", query.metadata().chatMemoryId());
-            LOG.debugf("Final chatMemory size: %d", chatMemory != null ? chatMemory.size() : 0);
-        } else {
-            LOG.debugf("Query metadata is null");
-        }
-        
         if (chatMemory == null || chatMemory.isEmpty()) {
             // no need to compress if there are no previous messages
             long duration = System.currentTimeMillis() - startTime;
