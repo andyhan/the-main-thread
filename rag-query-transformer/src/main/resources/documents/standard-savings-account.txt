@@ -1,0 +1,13 @@
+Standard Savings Account
+
+The Standard Savings Account is designed for customers who want a simple way to save money.
+
+Features:
+- Annual interest rate of 2.5%
+- No monthly maintenance fees
+- No minimum balance requirement
+- FDIC insured up to $250,000
+- Online and mobile banking access
+
+This account does not include travel benefits or international usage features.
+It is intended primarily for domestic use.

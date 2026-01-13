@@ -1,0 +1,12 @@
+Personal Loan Products
+
+The bank offers several personal loan options for different needs.
+
+Available loans include:
+- Home improvement loans with rates starting at 5.99% APR
+- Auto loans with rates starting at 3.99% APR
+- Loan terms ranging from 12 to 84 months
+- No prepayment penalties
+
+Personal loans are separate from checking and savings accounts.
+Loan products do not include banking or card-related features.
