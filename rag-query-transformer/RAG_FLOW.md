@@ -50,47 +50,47 @@ flowchart TB
 ```mermaid
 graph TB
     subgraph "CDI Container"
-        Producer[RetrievalAugmentorProducer<br/>@ApplicationScoped]
-        Transformer[StandaloneQueryTransformer<br/>@ApplicationScoped<br/>Injects ChatModel]
-        EmbedStore[EmbeddingStore<br/>Auto-created by easy-rag]
-        EmbedModel[EmbeddingModel<br/>Ollama nomic-embed-text]
+        Producer["RetrievalAugmentorProducer<br/>@ApplicationScoped"]
+        Transformer["StandaloneQueryTransformer<br/>@ApplicationScoped<br/>Injects ChatModel"]
+        EmbedStore["EmbeddingStore<br/>Auto-created by easy-rag"]
+        EmbedModel["EmbeddingModel<br/>Ollama nomic-embed-text"]
     end
     
     subgraph "REST Layer"
-        Resource[ChatbotResource<br/>@Path /chat]
+        Resource["ChatbotResource<br/>@Path /chat"]
     end
     
     subgraph "AI Service"
-        Service[BankingChatbot<br/>@RegisterAiService<br/>@ApplicationScoped<br/>@MemoryId for session management]
+        Service["BankingChatbot<br/>@RegisterAiService<br/>@ApplicationScoped<br/>@MemoryId for session management"]
     end
     
     subgraph "RAG Components"
-        Augmentor[RetrievalAugmentor<br/>@Produces by RetrievalAugmentorProducer]
-        Retriever[EmbeddingStoreContentRetriever<br/>Created in Producer<br/>maxResults: 3]
-        Aggregator[ContentAggregator<br/>Default]
-        Injector[ContentInjector<br/>Default]
+        Augmentor["RetrievalAugmentor<br/>@Produces by RetrievalAugmentorProducer"]
+        Retriever["EmbeddingStoreContentRetriever<br/>Created in Producer<br/>maxResults: 3"]
+        Aggregator["ContentAggregator<br/>Default"]
+        Injector["ContentInjector<br/>Default"]
     end
     
     subgraph "Query Metadata"
-        QueryMeta[Query.metadata()<br/>Contains:<br/>- chatMemoryId<br/>- chatMemory (List<ChatMessage>)<br/>- chatMessage]
+        QueryMeta["Query.metadata()<br/>Contains:<br/>- chatMemoryId<br/>- chatMemory (List<ChatMessage>)<br/>- chatMessage"]
     end
     
     subgraph "Models"
-        ChatModel[ChatModel<br/>Ollama llama3.2]
+        ChatModel["ChatModel<br/>Ollama llama3.2"]
     end
     
     subgraph "Storage"
-        VectorStore[Vector Store<br/>banking-embeddings.json]
-        Documents[Document Store<br/>src/main/resources/documents]
+        VectorStore["Vector Store<br/>banking-embeddings.json"]
+        Documents["Document Store<br/>src/main/resources/documents"]
     end
     
-    Resource -->|@Inject| Service
+    Resource -->|"@Inject"| Service
     Service -->|Uses| Augmentor
     Service -->|Manages| QueryMeta
-    Producer -->|@Produces| Augmentor
-    Producer -->|@Inject| EmbedStore
-    Producer -->|@Inject| EmbedModel
-    Producer -->|@Inject| Transformer
+    Producer -->|"@Produces"| Augmentor
+    Producer -->|"@Inject"| EmbedStore
+    Producer -->|"@Inject"| EmbedModel
+    Producer -->|"@Inject"| Transformer
     Producer -->|Creates| Retriever
     Augmentor -->|Uses| Transformer
     Augmentor -->|Uses| Retriever
