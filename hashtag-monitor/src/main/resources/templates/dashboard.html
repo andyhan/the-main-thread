@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hashtag Distribution Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f5f5f5;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border: 1px solid #e0e0e0;
+            padding: 40px;
+        }
+
+        h1 {
+            color: #212121;
+            margin-bottom: 8px;
+            font-size: 2em;
+            font-weight: 500;
+        }
+
+        .subtitle {
+            color: #757575;
+            margin-bottom: 32px;
+            font-size: 0.95em;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 16px;
+            margin-bottom: 40px;
+        }
+
+        .stat-card {
+            background: #ffffff;
+            border: 1px solid #e0e0e0;
+            padding: 24px;
+        }
+
+        .stat-card h3 {
+            font-size: 0.75em;
+            color: #757575;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 500;
+        }
+
+        .stat-card .value {
+            font-size: 2em;
+            font-weight: 400;
+            color: #212121;
+        }
+
+        .chart-container {
+            background: #ffffff;
+            border: 1px solid #e0e0e0;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        .chart-title {
+            color: #212121;
+            margin-bottom: 20px;
+            font-size: 1.25em;
+            font-weight: 500;
+        }
+
+        .hashtag-list {
+            display: grid;
+            gap: 1px;
+            background: #e0e0e0;
+            border: 1px solid #e0e0e0;
+        }
+
+        .hashtag-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 20px;
+            background: #ffffff;
+            transition: background-color 0.15s;
+        }
+
+        .hashtag-item:hover {
+            background: #fafafa;
+        }
+
+        .hashtag-name {
+            font-weight: 400;
+            color: #212121;
+            font-size: 0.95em;
+        }
+
+        .hashtag-count {
+            background: #212121;
+            color: white;
+            padding: 4px 12px;
+            font-weight: 500;
+            font-size: 0.875em;
+        }
+
+        .no-data {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+            font-size: 1.2em;
+        }
+
+        .live-indicator {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #212121;
+            color: white;
+            padding: 8px 16px;
+            font-size: 0.75em;
+            font-weight: 500;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border: 1px solid #212121;
+        }
+
+        .live-dot {
+            width: 6px;
+            height: 6px;
+            background: #4caf50;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.4;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="live-indicator" id="liveIndicator">
+        <span class="live-dot"></span>
+        <span>Live Updates</span>
+    </div>
+    <div class="container">
+        <h1>Hashtag Distribution (Top 50)</h1>
+        <p class="subtitle">Real-time monitoring of hashtag mentions</p>
+
+        <div class="no-data" id="noDataMessage" style="display: {stats.empty ? 'block' : 'none'};">
+            <p>No hashtag data available yet. The stream is collecting mentions...</p>
+        </div>
+        
+        <div class="stats-grid" id="statsGrid" style="display: {stats.empty ? 'none' : 'grid'};">
+            <div class="stat-card">
+                <h3>Total Hashtags</h3>
+                <div class="value">{totalHashtags}</div>
+            </div>
+            <div class="stat-card">
+                <h3>Total Mentions</h3>
+                <div class="value">{totalMentions}</div>
+            </div>
+            <div class="stat-card">
+                <h3>Most Popular</h3>
+                <div class="value">{topHashtag ?: "N/A"}</div>
+            </div>
+        </div>
+
+        <div class="chart-container" id="chartContainer" style="display: {stats.empty ? 'none' : 'block'};">
+            <h2 class="chart-title">Distribution Chart</h2>
+            <canvas id="hashtagChart"></canvas>
+        </div>
+
+        <div class="chart-container" id="listContainer" style="display: {stats.empty ? 'none' : 'block'};">
+            <h2 class="chart-title">Hashtag List</h2>
+            <div class="hashtag-list">
+                {#if !stats.empty}
+                    {#for stat in stats}
+                        <div class="hashtag-item">
+                            <span class="hashtag-name">#{stat.hashtag}</span>
+                            <span class="hashtag-count">{stat.count}</span>
+                        </div>
+                    {/for}
+                {/if}
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let chart = null;
+        let stats = {statsJson.raw};
+
+        // Initialize chart
+        function initChart() {
+            const ctx = document.getElementById('hashtagChart');
+            if (!ctx) {
+                console.warn('Chart canvas not found');
+                return;
+            }
+
+            // Don't initialize if we have no data
+            if (!stats || stats.length === 0) {
+                console.warn('No stats data available for chart initialization');
+                return;
+            }
+
+            // Limit to top 50 for initial display
+            const top50 = stats.slice(0, 50);
+            
+            chart = new Chart(ctx.getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: top50.map(s => s.hashtag),
+                    datasets: [{
+                        label: 'Mentions',
+                        data: top50.map(s => s.count),
+                        backgroundColor: '#212121',
+                        borderColor: '#212121',
+                        borderWidth: 0,
+                        borderRadius: 0,
+                        borderSkipped: false,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            backgroundColor: '#212121',
+                            padding: 12,
+                            titleFont: {
+                                size: 13,
+                                weight: '500'
+                            },
+                            bodyFont: {
+                                size: 13
+                            },
+                            titleColor: '#ffffff',
+                            bodyColor: '#ffffff',
+                            borderColor: '#212121',
+                            borderWidth: 0
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 1,
+                                color: '#757575',
+                                font: {
+                                    size: 11
+                                }
+                            },
+                            grid: {
+                                color: '#e0e0e0',
+                                drawBorder: false
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                color: '#757575',
+                                font: {
+                                    size: 11
+                                },
+                                maxRotation: 45,
+                                minRotation: 0,
+                                autoSkip: false
+                            },
+                            grid: {
+                                display: false,
+                                drawBorder: false
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Update chart with new data (limit to top 50)
+        function updateChart(newStats) {
+            const top50 = newStats.slice(0, 50);
+            stats = top50;
+            
+            // Initialize chart if it doesn't exist
+            if (!chart) {
+                initChart();
+                return;
+            }
+            
+            // Update existing chart
+            chart.data.labels = stats.map(s => s.hashtag);
+            chart.data.datasets[0].data = stats.map(s => s.count);
+            chart.update('none'); // 'none' mode for smooth updates
+        }
+
+        // Update the hashtag list (limit to top 50)
+        function updateHashtagList(newStats) {
+            const listContainer = document.querySelector('.hashtag-list');
+            if (!listContainer) return;
+
+            const top50 = newStats.slice(0, 50);
+            listContainer.innerHTML = top50.map(stat => {
+                const hashtag = stat.hashtag;
+                const count = stat.count;
+                return '<div class="hashtag-item">' +
+                    '<span class="hashtag-name">#' + hashtag + '</span>' +
+                    '<span class="hashtag-count">' + count + '</span>' +
+                    '</div>';
+            }).join('');
+        }
+
+        // Update summary cards
+        function updateSummaryCards(newStats, totalHashtags, totalMentions) {
+            const topHashtag = newStats.length > 0 ? newStats[0].hashtag : 'N/A';
+
+            const totalHashtagsEl = document.querySelector('.stats-grid .stat-card:nth-child(1) .value');
+            const totalMentionsEl = document.querySelector('.stats-grid .stat-card:nth-child(2) .value');
+            const topHashtagEl = document.querySelector('.stats-grid .stat-card:nth-child(3) .value');
+
+            if (totalHashtagsEl) totalHashtagsEl.textContent = totalHashtags !== undefined ? totalHashtags : newStats.length;
+            if (totalMentionsEl) totalMentionsEl.textContent = totalMentions !== undefined ? totalMentions : newStats.reduce((sum, s) => sum + s.count, 0);
+            if (topHashtagEl) topHashtagEl.textContent = topHashtag;
+        }
+
+        // Update all UI elements
+        function updateUI(responseData) {
+            // Handle both old format (array) and new format (object with stats, totalHashtags, totalMentions)
+            let newStats;
+            let totalHashtags;
+            let totalMentions;
+            
+            if (Array.isArray(responseData)) {
+                // Old format - just an array
+                newStats = responseData;
+                totalHashtags = newStats.length;
+                totalMentions = newStats.reduce((sum, s) => sum + s.count, 0);
+            } else if (responseData && responseData.stats) {
+                // New format - object with stats, totalHashtags, totalMentions
+                newStats = responseData.stats;
+                totalHashtags = responseData.totalHashtags;
+                totalMentions = responseData.totalMentions;
+            } else {
+                return;
+            }
+            
+            if (!newStats || !Array.isArray(newStats)) {
+                return;
+            }
+            
+            const noDataDiv = document.getElementById('noDataMessage');
+            const statsGrid = document.getElementById('statsGrid');
+            const chartContainer = document.getElementById('chartContainer');
+            const listContainer = document.getElementById('listContainer');
+            
+            if (newStats.length > 0) {
+                // Hide "no data" message and show stats sections
+                if (noDataDiv) noDataDiv.style.display = 'none';
+                if (statsGrid) statsGrid.style.display = 'grid';
+                if (chartContainer) chartContainer.style.display = 'block';
+                if (listContainer) listContainer.style.display = 'block';
+                
+                // Update all components
+                updateChart(newStats);
+                updateHashtagList(newStats);
+                updateSummaryCards(newStats, totalHashtags, totalMentions);
+            } else {
+                // Show "no data" message and hide stats sections
+                if (noDataDiv) noDataDiv.style.display = 'block';
+                if (statsGrid) statsGrid.style.display = 'none';
+                if (chartContainer) chartContainer.style.display = 'none';
+                if (listContainer) listContainer.style.display = 'none';
+            }
+        }
+
+        // SSE connection management
+        let reconnectAttempts = 0;
+        let maxReconnectAttempts = 10;
+        let reconnectDelay = 1000; // Start with 1 second
+        let maxReconnectDelay = 30000; // Max 30 seconds
+        let reconnectTimeout = null;
+        let isIntentionallyClosed = false;
+
+        function connectSSE() {
+            // Clear any existing reconnect timeout
+            if (reconnectTimeout) {
+                clearTimeout(reconnectTimeout);
+                reconnectTimeout = null;
+            }
+
+            // Don't reconnect if intentionally closed or exceeded max attempts
+            if (isIntentionallyClosed) {
+                return;
+            }
+
+            if (reconnectAttempts >= maxReconnectAttempts) {
+                console.warn('Max reconnection attempts reached. Stopping reconnection.');
+                updateConnectionStatus('disconnected', 'Connection failed. Please refresh the page.');
+                return;
+            }
+
+            const liveIndicator = document.getElementById('liveIndicator');
+            
+            try {
+                const eventSource = new EventSource('/dashboard/stats/stream');
+                
+                eventSource.addEventListener('stats', function(event) {
+                    try {
+                        const responseData = JSON.parse(event.data);
+                        // Handle both array format (old) and object format (new)
+                        const hasData = Array.isArray(responseData) 
+                            ? responseData.length > 0 
+                            : (responseData && responseData.stats && responseData.stats.length > 0);
+                        
+                        if (hasData) {
+                            updateUI(responseData);
+                            // Reset reconnect attempts on successful message
+                            reconnectAttempts = 0;
+                            reconnectDelay = 1000;
+                            updateConnectionStatus('connected');
+                            if (liveIndicator) {
+                                liveIndicator.style.display = 'flex';
+                            }
+                        }
+                    } catch (e) {
+                        console.error('Failed to parse stats update:', e);
+                    }
+                });
+
+                eventSource.onopen = function() {
+                    reconnectAttempts = 0;
+                    reconnectDelay = 1000;
+                    updateConnectionStatus('connected');
+                    if (liveIndicator) {
+                        liveIndicator.style.display = 'flex';
+                    }
+                };
+
+                eventSource.onerror = function(event) {
+                    eventSource.close();
+                    
+                    // Determine error type
+                    const readyState = eventSource.readyState;
+                    let errorMessage = 'Connection error';
+                    
+                    if (readyState === EventSource.CONNECTING) {
+                        errorMessage = 'Connecting...';
+                        updateConnectionStatus('connecting');
+                    } else if (readyState === EventSource.CLOSED) {
+                        // Connection was closed
+                        if (!isIntentionallyClosed) {
+                            reconnectAttempts++;
+                            const delay = Math.min(reconnectDelay, maxReconnectDelay);
+                            
+                            console.warn('SSE connection closed. Reconnecting in ' + delay + 'ms (attempt ' + reconnectAttempts + '/' + maxReconnectAttempts + ')...');
+                            updateConnectionStatus('reconnecting', 'Reconnecting... (' + reconnectAttempts + '/' + maxReconnectAttempts + ')');
+                            
+                            if (liveIndicator) {
+                                liveIndicator.style.display = 'none';
+                            }
+                            
+                            // Exponential backoff
+                            reconnectTimeout = setTimeout(() => {
+                                reconnectDelay = Math.min(reconnectDelay * 1.5, maxReconnectDelay);
+                                connectSSE();
+                            }, delay);
+                        }
+                        return;
+                    }
+                };
+
+                // Store reference for cleanup
+                window.eventSource = eventSource;
+                
+            } catch (e) {
+                console.error('Failed to create SSE connection:', e);
+                reconnectAttempts++;
+                const delay = Math.min(reconnectDelay, maxReconnectDelay);
+                
+                updateConnectionStatus('error', 'Connection error. Retrying...');
+                
+                reconnectTimeout = setTimeout(() => {
+                    reconnectDelay = Math.min(reconnectDelay * 1.5, maxReconnectDelay);
+                    connectSSE();
+                }, delay);
+            }
+        }
+
+        function updateConnectionStatus(status, message) {
+            const liveIndicator = document.getElementById('liveIndicator');
+            if (!liveIndicator) return;
+
+            const dot = liveIndicator.querySelector('.live-dot');
+            const text = liveIndicator.querySelector('span:last-child');
+            
+            switch(status) {
+                case 'connected':
+                    if (dot) dot.style.background = '#4caf50';
+                    if (text) text.textContent = 'Live Updates';
+                    liveIndicator.style.display = 'flex';
+                    break;
+                case 'connecting':
+                    if (dot) dot.style.background = '#ff9800';
+                    if (text) text.textContent = message || 'Connecting...';
+                    liveIndicator.style.display = 'flex';
+                    break;
+                case 'reconnecting':
+                    if (dot) dot.style.background = '#ff9800';
+                    if (text) text.textContent = message || 'Reconnecting...';
+                    liveIndicator.style.display = 'flex';
+                    break;
+                case 'disconnected':
+                    if (dot) dot.style.background = '#f44336';
+                    if (text) text.textContent = message || 'Disconnected';
+                    liveIndicator.style.display = 'flex';
+                    break;
+                case 'error':
+                    if (dot) dot.style.background = '#f44336';
+                    if (text) text.textContent = message || 'Connection Error';
+                    liveIndicator.style.display = 'flex';
+                    break;
+            }
+        }
+
+        // Initialize on page load (limit to top 50)
+        {#if !stats.empty}
+        stats = stats.slice(0, 50);
+        initChart();
+        {/if}
+
+        // Connect to real-time updates
+        connectSSE();
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', function() {
+            isIntentionallyClosed = true;
+            if (reconnectTimeout) {
+                clearTimeout(reconnectTimeout);
+            }
+            if (window.eventSource) {
+                window.eventSource.close();
+            }
+        });
+
+        // Handle page visibility changes
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden) {
+                // Page is hidden, but keep connection alive
+            } else {
+                // Page is visible again, ensure connection is active
+                if (!window.eventSource || window.eventSource.readyState === EventSource.CLOSED) {
+                    if (!isIntentionallyClosed && reconnectAttempts < maxReconnectAttempts) {
+                        reconnectAttempts = 0;
+                        reconnectDelay = 1000;
+                        connectSSE();
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>

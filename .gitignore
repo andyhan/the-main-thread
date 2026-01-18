@@ -2,13 +2,17 @@
 *.class
 .quarkus/
 .cursor/
+.bobmodes
+.bob/
 .vscode
 target/
 .gitignore
 
+article.md
+
 # model files
-model/
-models/
+**/resources/model/
+**/resources/models/
 
 # Log file
 *.log
