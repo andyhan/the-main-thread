@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <title>Apple Health GPX Visualizer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+</head>
+
+<body class="bg-gray-100 p-8">
+    <div class="max-w-5xl mx-auto space-y-6">
+
+        <div class="bg-white p-6 rounded-lg shadow space-y-3">
+            <h2 class="text-xl font-bold">Upload GPX</h2>
+            <input type="file" id="gpxInput" class="block" />
+            <button onclick="upload()" class="bg-blue-600 text-white px-4 py-2 rounded">Process Workout</button>
+            <p class="text-sm text-gray-600">Tip: Export your workout from Strava if you want HR data too.</p>
+        </div>
+
+        <div id="result" class="hidden grid grid-cols-2 gap-6">
+            <div class="bg-white p-4 rounded-lg shadow">
+                <h3 class="font-bold mb-2">Interactive Map</h3>
+                <div id="map" class="h-80 w-full rounded"></div>
+            </div>
+
+            <div class="bg-white p-4 rounded-lg shadow text-center space-y-3">
+                <h3 class="font-bold">Server Rendered Image</h3>
+                <img id="sparkline" class="h-80 mx-auto border rounded" />
+                <div id="stats" class="text-sm text-gray-600"></div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        let map;
+        let layer;
+
+        async function upload() {
+            const file = document.getElementById('gpxInput').files[0];
+            if (!file) return;
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const res = await fetch('/workouts', { method: 'POST', body: formData });
+            if (!res.ok) {
+                alert('Upload failed: ' + res.status);
+                return;
+            }
+            const workout = await res.json();
+            await showResults(workout);
+        }
+
+        async function showResults(workout) {
+            document.getElementById('result').classList.remove('hidden');
+
+            document.getElementById('sparkline').src = `/workouts/${workout.id}/image`;
+            document.getElementById('stats').innerText =
+                `Dist: ${(workout.totalDistanceMeters / 1000).toFixed(2)} km | Avg HR: ${workout.avgHeartRate} bpm | Max HR: ${workout.maxHeartRate} bpm`;
+
+            if (!map) {
+                map = L.map('map');
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+            }
+
+            if (layer) {
+                layer.remove();
+                layer = null;
+            }
+
+            if (workout.routeGeoJson) {
+                const geo = JSON.parse(workout.routeGeoJson);
+                layer = L.geoJSON(geo).addTo(map);
+                map.fitBounds(layer.getBounds());
+            }
+        }
+    </script>
+</body>
+
+</html>
