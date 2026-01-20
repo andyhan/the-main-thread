@@ -1,0 +1,18 @@
+--- flux_metal.m
++++ flux_metal.m
+@@ -1506,11 +1506,13 @@
+-        NSArray *searchPaths = @[
++        NSMutableArray *searchPaths = [NSMutableArray arrayWithObjects:
+             @"flux_shaders.metal",
+             @"./flux_shaders.metal",
+-            [[NSBundle mainBundle] pathForResource:@"flux_shaders" ofType:@"metal"],
+-        ];
++            nil];
++
++        NSString *bundlePath = [[NSBundle mainBundle] pathForResource:@"flux_shaders" ofType:@"metal"];
++        if (bundlePath) {
++            [searchPaths addObject:bundlePath];
++        }
+ 
+         for (NSString *path in searchPaths) {
+             if (path && [[NSFileManager defaultManager] fileExistsAtPath:path]) {
