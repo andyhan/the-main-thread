@@ -17,8 +17,7 @@
         <quarkus.platform.version>3.30.6</quarkus.platform.version>
         <skipITs>true</skipITs>
         <surefire-plugin.version>3.5.4</surefire-plugin.version>
-        <substack-article.url>
-            https://www.the-main-thread.com/p/java-local-image-generation-quarkus-ffm-flux</substack-article.url>
+        <substack-article.url>https://www.the-main-thread.com/p/java-local-image-generation-quarkus-ffm-flux</substack-article.url>
     </properties>
 
     <dependencyManagement>
