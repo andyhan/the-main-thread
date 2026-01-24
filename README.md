@@ -46,6 +46,7 @@ Each folder in this repository matches an article from the Substack and includes
 | **[rag-query-transformer](https://github.com/myfear/the-main-thread/tree/main/rag-query-transformer)** | 21 | 3.30.6 | - | [Article](https://www.the-main-thread.com/p/query-rewriting-rag-java-langchain4j-quarkus) | ![rag-query-transformer](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/myfear/the-main-thread/badges/rag-query-transformer.json) |
 | **[unicode-defense](https://github.com/myfear/the-main-thread/tree/main/unicode-defense)** | 21 | 3.30.6 | ✅ 4/4 | [Article](https://https://www.the-main-thread.com/p/unicode-security-java-quarkus-input-validation) | ![unicode-defense](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/myfear/the-main-thread/badges/unicode-defense.json) |
 | **[vibe-api](https://github.com/myfear/the-main-thread/tree/main/vibe-api)** | 21 | 3.30.5 | - | Article | ![vibe-api](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/myfear/the-main-thread/badges/vibe-api.json) |
+| **[webdav-server](https://github.com/myfear/the-main-thread/tree/main/webdav-server)** | 21 | 3.30.8 | - | [Article](https://www.the-main-thread.com/p/webdav-server-java-quarkus-vertx) | ![webdav-server](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/myfear/the-main-thread/badges/webdav-server.json) |
 <!-- BUILD_BADGES_END -->
 
 
