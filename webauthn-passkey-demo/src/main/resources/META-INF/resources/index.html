@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebAuthn Passkey Demo</title>
+    
+    <!-- Include Quarkus WebAuthn JavaScript library -->
+    <script src="/q/webauthn/webauthn.js" type="text/javascript" charset="UTF-8"></script>
+    
+    <style>
+        body {
+            font-family: system-ui, sans-serif;
+            max-width: 480px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+
+        h1 {
+            font-size: 1.25rem;
+            margin-bottom: 1.5rem;
+        }
+
+        h2 {
+            font-size: 1rem;
+            font-weight: 600;
+            margin: 1.25rem 0 0.5rem;
+        }
+
+        nav {
+            margin-bottom: 1.5rem;
+            font-size: 0.875rem;
+        }
+
+        nav a {
+            color: #06c;
+            margin-right: 1rem;
+        }
+
+        .status {
+            margin-bottom: 1rem;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #ddd;
+        }
+
+        input {
+            display: block;
+            width: 100%;
+            padding: 0.5rem;
+            margin: 0.25rem 0 0.75rem;
+            border: 1px solid #ccc;
+        }
+
+        button {
+            margin: 0.25rem 0.75rem 0.25rem 0;
+            padding: 0.5rem 1rem;
+            background: #333;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+        }
+
+        #message-area {
+            margin-top: 1rem;
+            font-size: 0.875rem;
+        }
+
+        .error {
+            color: #c00;
+        }
+
+        .success {
+            color: #060;
+        }
+
+        .info-box {
+            margin-top: 1.5rem;
+            padding-top: 1rem;
+            border-top: 1px solid #ddd;
+            font-size: 0.8125rem;
+            color: #666;
+        }
+
+        .info-box strong {
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <h1>WebAuthn Passkey Demo</h1>
+
+    <nav>
+        <a href="/api/public">Public</a>
+        <a href="/api/users/me">User</a>
+        <a href="/api/admin">Admin</a>
+        <a href="/q/webauthn/logout">Logout</a>
+    </nav>
+
+    <div class="status" id="status">
+        <strong>Current user:</strong> <span id="current-user">Loading...</span>
+    </div>
+    <div id="message-area"></div>
+
+    <h2>Login</h2>
+    <button id="login-btn">Login with Passkey</button>
+
+    <h2>Register</h2>
+    <input id="username" type="text" placeholder="Username" />
+    <input id="firstName" type="text" placeholder="First name (optional)" />
+    <input id="lastName" type="text" placeholder="Last name (optional)" />
+    <button id="register-btn">Register with Passkey</button>
+
+    <div class="info-box">
+        <strong>Tip:</strong> Register with username "admin" for admin access. Use Face ID / Touch ID on Apple devices or Chrome DevTools WebAuthn for testing.
+    </div>
+
+    <script type="text/javascript">
+        // Initialize WebAuthn library
+        const webAuthn = new WebAuthn();
+
+        // DOM elements
+        const currentUserSpan = document.getElementById('current-user');
+        const messageArea = document.getElementById('message-area');
+        const loginBtn = document.getElementById('login-btn');
+        const registerBtn = document.getElementById('register-btn');
+        const usernameInput = document.getElementById('username');
+        const firstNameInput = document.getElementById('firstName');
+        const lastNameInput = document.getElementById('lastName');
+
+        // Helper functions
+        function showMessage(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = type === 'error' ? 'error' : 'success';
+            div.textContent = message;
+            messageArea.innerHTML = '';
+            messageArea.appendChild(div);
+
+            // Auto-remove after 5 seconds
+            setTimeout(() => {
+                div.remove();
+            }, 5000);
+        }
+
+        function updateCurrentUser() {
+            fetch('/api/public/me')
+                .then(response => response.text())
+                .then(username => {
+                    currentUserSpan.textContent = username;
+                    if (username !== '<not logged in>') {
+                        showMessage(`Welcome back, ${username}!`, 'success');
+                    }
+                })
+                .catch(err => {
+                    currentUserSpan.textContent = 'Error loading user';
+                    console.error('Error fetching current user:', err);
+                });
+        }
+
+        // Login handler
+        loginBtn.addEventListener('click', async () => {
+            messageArea.innerHTML = '';
+            loginBtn.disabled = true;
+            loginBtn.textContent = 'Authenticating...';
+
+            try {
+                // This will:
+                // 1. Get a challenge from /q/webauthn/login-options-challenge
+                // 2. Prompt for biometric/PIN
+                // 3. Send response to /q/webauthn/login
+                await webAuthn.login();
+                
+                updateCurrentUser();
+                showMessage('Login successful!', 'success');
+            } catch (err) {
+                console.error('Login error:', err);
+                showMessage('Login failed: ' + err.message, 'error');
+            } finally {
+                loginBtn.disabled = false;
+                loginBtn.textContent = 'Login with Passkey';
+            }
+        });
+
+        // Registration handler
+        registerBtn.addEventListener('click', async () => {
+            const username = usernameInput.value.trim();
+            const firstName = firstNameInput.value.trim();
+            const lastName = lastNameInput.value.trim();
+
+            if (!username) {
+                showMessage('Please enter a username', 'error');
+                return;
+            }
+
+            messageArea.innerHTML = '';
+            registerBtn.disabled = true;
+            registerBtn.textContent = 'Creating Passkey...';
+
+            try {
+                const displayName = firstName && lastName 
+                    ? `${firstName} ${lastName}` 
+                    : username;
+
+                // This will:
+                // 1. Get a challenge from /q/webauthn/register-options-challenge
+                // 2. Create new credentials with biometric/PIN
+                // 3. Send response to /q/webauthn/register
+                await webAuthn.register({ 
+                    username: username, 
+                    displayName: displayName 
+                });
+
+                updateCurrentUser();
+                showMessage(`Registration successful! Welcome, ${username}!`, 'success');
+                
+                // Clear form
+                usernameInput.value = '';
+                firstNameInput.value = '';
+                lastNameInput.value = '';
+            } catch (err) {
+                console.error('Registration error:', err);
+                showMessage('Registration failed: ' + err.message, 'error');
+            } finally {
+                registerBtn.disabled = false;
+                registerBtn.textContent = 'Register with Passkey';
+            }
+        });
+
+        // Load current user on page load
+        updateCurrentUser();
+
+        // Enter key support
+        [usernameInput, firstNameInput, lastNameInput].forEach(input => {
+            input.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    registerBtn.click();
+                }
+            });
+        });
+    </script>
+</body>
+</html>
