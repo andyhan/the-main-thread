@@ -1,0 +1,21 @@
+{
+  "mcpServers": {
+    "postgres": {
+      "command": "podman",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "--network=host",
+        "crystaldba/postgres-mcp",
+        "--access-mode=unrestricted",
+        "--transport=stdio",
+        "postgresql://quarkus:quarkus@host.containers.internal:5432/quarkus"
+      ],
+      "alwaysAllow": [
+        "analyze_db_health",
+        "list_schemas"
+      ]
+    }
+  }
+}
