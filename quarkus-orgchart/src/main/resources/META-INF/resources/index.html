@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Company Organization Chart</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 24px;
+            font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(160deg, #f0f4f8 0%, #e2e8f0 100%);
+            min-height: 100vh;
+        }
+
+        h1 {
+            margin: 0 0 8px 0;
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: #1e293b;
+            letter-spacing: -0.02em;
+        }
+
+        .subtitle {
+            margin: 0 0 24px 0;
+            font-size: 0.9rem;
+            color: #64748b;
+        }
+
+        .chart-container {
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 4px 24px rgba(15, 23, 42, 0.08);
+            padding: 24px;
+            overflow: auto;
+        }
+
+        .node-card {
+            cursor: default;
+        }
+
+        .node-card .card-rect {
+            rx: 8;
+            ry: 8;
+            filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.06));
+            transition: filter 0.15s ease;
+        }
+
+        .node-card:hover .card-rect {
+            filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.1));
+        }
+
+        .node-card .card-rect.level-0 {
+            fill: #0f172a;
+            stroke: #334155;
+            stroke-width: 1.5;
+        }
+
+        .node-card .card-rect.level-1 {
+            fill: #1e40af;
+            stroke: #2563eb;
+            stroke-width: 1;
+        }
+
+        .node-card .card-rect.level-2 {
+            fill: #fff;
+            stroke: #cbd5e1;
+            stroke-width: 1;
+        }
+
+        .node-card .card-rect.level-3,
+        .node-card .card-rect.level-4 {
+            fill: #f8fafc;
+            stroke: #e2e8f0;
+            stroke-width: 1;
+        }
+
+        .node-card .name {
+            font-size: 13px;
+            font-weight: 600;
+            fill: #1e293b;
+        }
+
+        .node-card.level-0 .name {
+            fill: #fff;
+            font-size: 14px;
+        }
+
+        .node-card.level-1 .name {
+            fill: #fff;
+        }
+
+        .node-card .title {
+            font-size: 11px;
+            font-weight: 500;
+            fill: #64748b;
+        }
+
+        .node-card.level-0 .title,
+        .node-card.level-1 .title {
+            fill: rgba(255, 255, 255, 0.85);
+        }
+
+        .node-card .department {
+            font-size: 10px;
+            font-weight: 400;
+            fill: #94a3b8;
+        }
+
+        .node-card.level-0 .department,
+        .node-card.level-1 .department {
+            fill: rgba(255, 255, 255, 0.7);
+        }
+
+        .link {
+            fill: none;
+            stroke: #cbd5e1;
+            stroke-width: 1.5;
+        }
+
+        .link.level-0 {
+            stroke: #94a3b8;
+            stroke-width: 2;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Organization Chart</h1>
+    <p class="subtitle">Reporting structure and team hierarchy</p>
+    <div class="chart-container">
+        <svg width="1200" height="800"></svg>
+    </div>
+
+    <script>
+        const CARD_WIDTH = 200;
+        const CARD_HEIGHT = 72;
+        const MARGIN = 48;
+        const VIEW_WIDTH = 1200;
+        const VIEW_HEIGHT = 800;
+
+        fetch('/api/employees/hierarchy')
+            .then(r => r.json())
+            .then(data => {
+                const root = d3.hierarchy(data[0]);
+                // Top-to-bottom: size([width, height]) so tree fits in viewport. x = horizontal, y = depth.
+                const treeLayout = d3.tree()
+                    .size([VIEW_WIDTH - 2 * MARGIN, VIEW_HEIGHT - 2 * MARGIN])
+                    .separation((a, b) => (a.parent === b.parent ? 1 : 1.2));
+                treeLayout(root);
+
+                const svg = d3.select('svg');
+                const g = svg.append('g')
+                    .attr('transform', `translate(${MARGIN},${MARGIN})`);
+
+                // Elbow links: from bottom of source card to top of target card
+                const linkGenerator = (d) => {
+                    const sx = d.source.x;
+                    const sy = d.source.y + CARD_HEIGHT / 2;
+                    const tx = d.target.x;
+                    const ty = d.target.y - CARD_HEIGHT / 2;
+                    const midY = (sy + ty) / 2;
+                    return `M${sx},${sy} V${midY} H${tx} V${ty}`;
+                };
+
+                g.selectAll('.link')
+                    .data(root.links())
+                    .enter()
+                    .append('path')
+                    .attr('class', d => 'link level-' + Math.min(d.source.depth, 2))
+                    .attr('d', linkGenerator);
+
+                const node = g.selectAll('.node')
+                    .data(root.descendants())
+                    .enter()
+                    .append('g')
+                    .attr('class', d => 'node node-card level-' + Math.min(d.depth, 4))
+                    .attr('transform', d => `translate(${d.x},${d.y})`);
+
+                node.append('rect')
+                    .attr('class', d => 'card-rect level-' + Math.min(d.depth, 4))
+                    .attr('width', CARD_WIDTH)
+                    .attr('height', CARD_HEIGHT)
+                    .attr('x', -CARD_WIDTH / 2)
+                    .attr('y', -CARD_HEIGHT / 2);
+
+                node.append('text')
+                    .attr('class', 'name')
+                    .attr('text-anchor', 'middle')
+                    .attr('dy', '-0.5em')
+                    .attr('y', -CARD_HEIGHT / 2 + 22)
+                    .text(d => (d.data.firstName || '') + ' ' + (d.data.lastName || ''));
+
+                node.append('text')
+                    .attr('class', 'title')
+                    .attr('text-anchor', 'middle')
+                    .attr('dy', '0.35em')
+                    .attr('y', -CARD_HEIGHT / 2 + 42)
+                    .text(d => d.data.title || '');
+
+                node.append('text')
+                    .attr('class', 'department')
+                    .attr('text-anchor', 'middle')
+                    .attr('dy', '0.35em')
+                    .attr('y', -CARD_HEIGHT / 2 + 58)
+                    .text(d => d.data.department ? String(d.data.department).toUpperCase() : '');
+            });
+    </script>
+</body>
+
+</html>
