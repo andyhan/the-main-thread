@@ -1,0 +1,38 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "com.example";
+option java_outer_classname = "GreetingProto";
+
+package greeting;
+
+service GreetingService {
+  rpc SayHello (HelloRequest) returns (HelloReply);
+  rpc GetProfile (ProfileRequest) returns (ProfileReply);
+  rpc StreamGreetings (StreamRequest) returns (stream HelloReply);
+}
+
+message HelloRequest {
+  string name = 1;
+}
+
+message HelloReply {
+  string message = 1;
+  int64 timestamp = 2;
+}
+
+message ProfileRequest {
+  string user_id = 1;
+}
+
+message ProfileReply {
+  string user_id = 1;
+  string name = 2;
+  string email = 3;
+  repeated string roles = 4;
+}
+
+message StreamRequest {
+  string name = 1;
+  int32 count = 2;
+}

@@ -1,0 +1,41 @@
+version: "3.8"
+
+services:
+  quarkus-grpc:
+    image: localhost/meisele/quarkus-grpc-service:1.0.0-SNAPSHOT
+    pull_policy: never
+    ports:
+      - "9000:9000"
+
+  # gRPC→MCP bridge: exposes Quarkus gRPC as MCP over SSE. Uses custom bridge script because
+  # BETA-2's mcpgateway.translate --grpc only discovers services and does not start an HTTP server.
+  translate:
+    build: ./context-forge
+    command: ["python3", "/app/grpc_sse_bridge.py"]
+    environment:
+      - GRPC_TARGET=quarkus-grpc:9000
+      - PORT=8002
+      - HOST=0.0.0.0
+    ports:
+      - "8002:8002"
+    depends_on:
+      - quarkus-grpc
+
+  context-forge:
+    build: ./context-forge
+    ports:
+      - "4444:4444"
+    depends_on:
+      - quarkus-grpc
+      - translate
+    environment:
+      - HOST=0.0.0.0
+      - DATABASE_URL=sqlite:///./mcp.db
+      - MCPGATEWAY_UI_ENABLED=true
+      - MCPGATEWAY_ADMIN_API_ENABLED=true
+      - JWT_SECRET_KEY=my-test-key
+      - PLATFORM_ADMIN_EMAIL=admin@example.com
+      - PLATFORM_ADMIN_PASSWORD=changeme
+      - PLATFORM_ADMIN_FULL_NAME=Platform Administrator
+      - ADMIN_REQUIRE_PASSWORD_CHANGE_ON_BOOTSTRAP=false
+      - MCPGATEWAY_GRPC_ENABLED=true
