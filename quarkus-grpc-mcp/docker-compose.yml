@@ -21,6 +21,7 @@ services:
     depends_on:
       - quarkus-grpc
 
+  # Gateway: BETA-2 has no /grpc API (404). Register the translate MCP URL via POST /gateways (see register-grpc-mcp.sh).
   context-forge:
     build: ./context-forge
     ports:
@@ -29,6 +30,7 @@ services:
       - quarkus-grpc
       - translate
     environment:
+      - PYTHONUNBUFFERED=1
       - HOST=0.0.0.0
       - DATABASE_URL=sqlite:///./mcp.db
       - MCPGATEWAY_UI_ENABLED=true

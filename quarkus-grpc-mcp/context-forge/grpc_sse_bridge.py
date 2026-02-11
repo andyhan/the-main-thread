@@ -12,8 +12,22 @@ import os
 import uuid
 from typing import Any, Dict, List
 
+# Protobuf 5+ removed MessageFactory.GetPrototype; translate_grpc still uses it.
+from google.protobuf import message_factory as _mf
+if not hasattr(_mf.MessageFactory, "GetPrototype"):
+    _mf.MessageFactory.GetPrototype = lambda self, descriptor: _mf.GetMessageClass(descriptor)
+
+# Protobuf 5+ renamed including_default_value_fields -> always_print_fields_with_no_presence.
+from google.protobuf import json_format as _jf
+_MessageToDict_orig = _jf.MessageToDict
+def _MessageToDict(message, **kwargs):
+    if "including_default_value_fields" in kwargs:
+        kwargs.setdefault("always_print_fields_with_no_presence", kwargs.pop("including_default_value_fields"))
+    return _MessageToDict_orig(message, **kwargs)
+_jf.MessageToDict = _MessageToDict
+
 from fastapi import FastAPI, Request, status
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import JSONResponse, PlainTextResponse
 from sse_starlette.sse import EventSourceResponse
 import uvicorn
 
@@ -126,7 +140,7 @@ def create_app(endpoint: GrpcEndpoint, translator: GrpcToMcpTranslator) -> FastA
             headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"},
         )
 
-    @app.post("/message", status_code=status.HTTP_202_ACCEPTED)
+    @app.post("/message")
     async def post_message(raw: Request):
         body = await raw.body()
         try:
@@ -139,7 +153,8 @@ def create_app(endpoint: GrpcEndpoint, translator: GrpcToMcpTranslator) -> FastA
             response_queue.put_nowait(line)
         except asyncio.QueueFull:
             pass
-        return PlainTextResponse("forwarded", status_code=status.HTTP_202_ACCEPTED)
+        # Return JSON-RPC response in body so direct callers (e.g. curl) get the result.
+        return JSONResponse(content=response)
 
     @app.get("/healthz")
     async def health():
