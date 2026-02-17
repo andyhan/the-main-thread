@@ -14,7 +14,7 @@ import jakarta.ws.rs.NotFoundException;
 public class AuthorMixedModeService {
 
     @Inject
-    Author.WriteRepo writeRepo;
+    Author.Repo repo;
     @Inject
     Author.ReadRepo readRepo;
 
@@ -24,19 +24,19 @@ public class AuthorMixedModeService {
         Author a = new Author();
         a.name = name;
         a.country = country;
-        writeRepo.persist(a);
+        repo.persist(a);
         return a;
     }
 
     @Transactional
     public void renameAuthor(Long id, String newName) {
-        Author a = writeRepo.findById(id);
+        Author a = repo.findById(id);
         if (a == null)
             throw new NotFoundException();
         a.name = newName;
     }
 
-    // Blocking stateless — explicit insert/update/delete (no @Transactional: stateless uses its own session)
+    // Blocking stateless — explicit insert/update; each stateless operation runs in its own transaction
     public void bulkImport(List<Author> authors) {
         authors.forEach(a -> a.statelessBlocking().insert());
     }
@@ -59,14 +59,14 @@ public class AuthorMixedModeService {
 
     @WithTransaction
     public Uni<Void> renameAuthorReactive(Long id, String newName) {
-        Author a = writeRepo.findById(id);
+        Author a = repo.findById(id);
         if (a == null)
             return Uni.createFrom().failure(new NotFoundException());
         a.name = newName;
         return Uni.createFrom().voidItem();
     }
 
-    // Reactive stateless — needs stateless session (do not use @WithTransaction)
+    // Reactive stateless — use SessionOperations or @WithTransaction(stateless = true)
     public Uni<List<Author>> getCatalogByCountry(String country) {
         return SessionOperations.withStatelessTransaction(() -> readRepo.catalog(country));
     }

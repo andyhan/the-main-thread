@@ -22,6 +22,7 @@ public class Author extends PanacheEntity {
 
     public String country;
 
+    // Blocking managed — one repo for all blocking operations
     public interface Repo extends PanacheRepository<Author> {
 
         // Type-safe: Hibernate validates 'name' exists on Author at build time
@@ -35,12 +36,6 @@ public class Author extends PanacheEntity {
         // Build-time-validated delete
         @HQL("delete from Author where country = :country")
         long deleteByCountry(String country);
-    }
-
-    // Blocking managed — for transactional writes
-    public interface WriteRepo extends PanacheRepository<Author> {
-        @Find
-        Optional<Author> findByName(String name);
     }
 
     // Reactive stateless — for read-heavy endpoints
