@@ -11,5 +11,6 @@
     '''(?:^|\/)bsky-javafeed-generator2.*\.key$''',
     '''(?:^|\/)enterprise-rag-secure\/.*\.pem$''',
     '''(?:^|\/)enterprise-rag-metadata\/.*\.pem$''',
+    '''(?:^|\/)book-catalog\/.*\.pem$''',
      '''(?:^|/)src/main/resources/certs/.*'''
     ]

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<server description="Book Catalog">
+
+  <!--
+    One feature tag activates the entire MicroProfile 6.1 spec:
+    Config, Health, Fault Tolerance, JWT, Metrics, OpenAPI, Rest Client, and more.
+    You do not need to list them individually unless you want fine-grained control.
+  -->
+  <featureManager>
+    <feature>microProfile-7.1</feature>
+    <feature>pages-3.1</feature>
+  </featureManager>
+
+  <!--
+    ${liberty.http.port} is resolved from the <variable> element below,
+    which can itself be overridden by a system property or env var.
+  -->
+  <httpEndpoint id="defaultHttpEndpoint"
+                httpPort="${liberty.http.port}"
+                httpsPort="${liberty.https.port}"/>
+
+  <!--
+    Deploy the WAR at the root context so URLs are /api/...
+    The location attribute matches the <finalName> in pom.xml.
+  -->
+  <webApplication location="book-catalog.war" contextRoot="/"/>
+
+  <!-- Default port values — overridden by the Maven property ${liberty.http.port} -->
+  <variable name="liberty.http.port"  value="9080"/>
+  <variable name="liberty.https.port" value="9443"/>
+
+  <!-- JWT defaults — you will uncomment mpJwt in Step 7 -->
+  <variable name="jwt.issuer"   value="https://dev-issuer.example.com"/>
+
+</server>

@@ -1,0 +1,274 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>dev.example</groupId>
+  <artifactId>book-catalog</artifactId>
+  <version>1.0-SNAPSHOT</version>
+  <packaging>war</packaging>
+
+  <name>book-catalog Maven Webapp</name>
+  <!-- FIXME change it to the project's website -->
+  <url>http://www.example.com</url>
+
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <maven.compiler.release>17</maven.compiler.release>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+    <!--
+      Pin every version in one place so every developer and CI job
+      produces identical results regardless of what lands on Maven Central.
+    -->
+    <jakartaee-api.version>10.0.0</jakartaee-api.version>
+    <microprofile-api.version>7.1</microprofile-api.version>
+    <compiler-plugin.version>3.13.0</compiler-plugin.version>
+    <war-plugin.version>3.4.0</war-plugin.version>
+    <liberty.plugin.version>3.11.4</liberty.plugin.version>
+
+    <!-- Override on the CLI: mvn liberty:dev -Dliberty.http.port=9081 -->
+    <liberty.http.port>9080</liberty.http.port>
+    <liberty.https.port>9443</liberty.https.port>
+  </properties>
+
+  <dependencyManagement>
+    <dependencies>
+      <!-- MicroProfile 7.1 BOM: versions for Config, Health, Fault Tolerance, JWT, Metrics, OpenAPI, Rest Client, Telemetry -->
+      <dependency>
+        <groupId>org.eclipse.microprofile</groupId>
+        <artifactId>microprofile</artifactId>
+        <version>${microprofile-api.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      
+      <dependency>
+        <groupId>jakarta.platform</groupId>
+        <artifactId>jakarta.jakartaee-core-api</artifactId>
+        <version>${jakartaee-api.version}</version>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+
+  <dependencies>
+    <dependency>
+      <groupId>jakarta.platform</groupId>
+      <artifactId>jakarta.jakartaee-core-api</artifactId>
+      <scope>provided</scope>
+    </dependency>
+
+    <!-- MicroProfile 7.1 APIs (provided by Liberty at runtime) -->
+    <dependency>
+      <groupId>org.eclipse.microprofile.config</groupId>
+      <artifactId>microprofile-config-api</artifactId>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.eclipse.microprofile.fault-tolerance</groupId>
+      <artifactId>microprofile-fault-tolerance-api</artifactId>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.eclipse.microprofile.health</groupId>
+      <artifactId>microprofile-health-api</artifactId>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.eclipse.microprofile.metrics</groupId>
+      <artifactId>microprofile-metrics-api</artifactId>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.eclipse.microprofile.jwt</groupId>
+      <artifactId>microprofile-jwt-auth-api</artifactId>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.eclipse.microprofile.openapi</groupId>
+      <artifactId>microprofile-openapi-api</artifactId>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.eclipse.microprofile.rest.client</groupId>
+      <artifactId>microprofile-rest-client-api</artifactId>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.eclipse.microprofile.telemetry</groupId>
+      <artifactId>microprofile-telemetry-api</artifactId>
+      <type>pom</type>
+      <scope>provided</scope>
+    </dependency>
+
+
+    <!-- JUnit 5 for unit tests -->
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <version>5.11.3</version>
+      <scope>test</scope>
+    </dependency>
+
+    <!--
+      A lightweight JAX-RS client for integration tests.
+      We need something that runs outside Liberty to call the live server.
+      RESTEasy client is a good fit — no JBoss AS dependency required.
+    -->
+    <dependency>
+      <groupId>org.jboss.resteasy</groupId>
+      <artifactId>resteasy-client</artifactId>
+      <version>6.2.11.Final</version>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+
+  <build>
+    <finalName>book-catalog</finalName>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>${compiler-plugin.version}</version>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-war-plugin</artifactId>
+        <version>${war-plugin.version}</version>
+        <configuration>
+          <failOnMissingWebXml>false</failOnMissingWebXml>
+        </configuration>
+      </plugin>
+
+      <!--  Surefire — unit tests only (excludes *IT.java) -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>3.5.2</version>
+        <configuration>
+          <excludes>
+            <exclude>**/*IT.java</exclude>
+          </excludes>
+        </configuration>
+      </plugin>
+
+
+      <!-- 4. Failsafe — integration tests against a live Liberty server -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-failsafe-plugin</artifactId>
+        <version>3.5.2</version>
+        <configuration>
+          <!--
+      Pass the Liberty port into the test JVM so integration tests
+      know which port to connect to without hardcoding it.
+    -->
+          <systemPropertyVariables>
+            <liberty.http.port>${liberty.http.port}</liberty.http.port>
+          </systemPropertyVariables>
+        </configuration>
+        <executions>
+          <execution>
+            <goals>
+              <goal>integration-test</goal>
+              <goal>verify</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+
+      <!-- Run JwtGenerator: mvn -q exec:java -Dexec.mainClass="dev.example.catalog.JwtGenerator" -->
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>exec-maven-plugin</artifactId>
+        <version>3.5.0</version>
+        <configuration>
+          <classpathScope>test</classpathScope>
+        </configuration>
+      </plugin>
+
+      <!--
+         liberty-maven-plugin — downloads, configures, and runs Liberty.
+
+        RUNTIME RESOLUTION:
+        No <runtimeArtifact> is configured here. The plugin resolves the runtime
+        by scanning <dependencies> for io.openliberty:openliberty-runtime and
+        using its version (${liberty.runtime.version} = 25.0.0.11).
+
+        This approach keeps the runtime version in one place with the rest of
+        your dependencies, and lets CI override it with:
+          mvn liberty:dev -Dliberty.runtime.version=25.0.0.12
+      -->
+      <plugin>
+        <groupId>io.openliberty.tools</groupId>
+        <artifactId>liberty-maven-plugin</artifactId>
+        <version>${liberty.plugin.version}</version>
+
+        <configuration>
+          <serverName>book-catalog-server</serverName>
+
+          <!--
+            looseApplication=true: Liberty reads class files directly from
+            target/classes instead of a repackaged WAR.
+            Save → compile → hot-reload in ~1 second instead of ~10.
+          -->
+          <looseApplication>true</looseApplication>
+
+          <!--
+            New in 3.11.0: changes the on-demand test trigger in dev mode
+            from pressing Enter (easy to hit accidentally) to 't' then Enter.
+          -->
+          <changeOnDemandTestsAction>true</changeOnDemandTestsAction>
+        </configuration>
+
+        <!--
+          Bind Liberty goals to Maven lifecycle phases so that
+          "mvn verify" does the full cycle automatically:
+          create → install-features → deploy → start → ITs → stop
+        -->
+        <executions>
+          <execution>
+            <id>liberty-create</id>
+            <phase>pre-integration-test</phase>
+            <goals>
+              <goal>create</goal>
+            </goals>
+          </execution>
+          <execution>
+            <id>liberty-install-feature</id>
+            <phase>pre-integration-test</phase>
+            <goals>
+              <goal>install-feature</goal>
+            </goals>
+          </execution>
+          <execution>
+            <id>liberty-deploy</id>
+            <phase>pre-integration-test</phase>
+            <goals>
+              <goal>deploy</goal>
+            </goals>
+          </execution>
+          <execution>
+            <id>liberty-start</id>
+            <phase>pre-integration-test</phase>
+            <goals>
+              <goal>start</goal>
+            </goals>
+          </execution>
+          <execution>
+            <id>liberty-stop</id>
+            <phase>post-integration-test</phase>
+            <goals>
+              <goal>stop</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+
+
+    </plugins>
+  </build>
+</project>
