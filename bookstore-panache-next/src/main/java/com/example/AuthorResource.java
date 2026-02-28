@@ -27,7 +27,7 @@ public class AuthorResource {
 
     @GET
     public List<Author> list() {
-        return repo.findAll().list();
+        return repo.listAll();
     }
 
     @GET
