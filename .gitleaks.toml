@@ -12,5 +12,6 @@
     '''(?:^|\/)enterprise-rag-secure\/.*\.pem$''',
     '''(?:^|\/)enterprise-rag-metadata\/.*\.pem$''',
     '''(?:^|\/)book-catalog\/.*\.pem$''',
+    '''(?:^|\/)dpop-demo\/.*\.pem$''',
      '''(?:^|/)src/main/resources/certs/.*'''
     ]
