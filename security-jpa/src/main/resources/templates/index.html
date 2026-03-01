@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home</title>
+    <link rel="stylesheet" href="/css/site.css">
+</head>
+
+<body>
+    <div class="layout">
+        <h1>Welcome, {username}!</h1>
+        <p class="nav-links">
+            <a href="/api/user">User endpoint</a>
+            <a href="/api/admin">Admin endpoint</a>
+        </p>
+        <div class="inline-actions">
+            <form action="/logout" method="post">
+                <button type="submit">Logout</button>
+            </form>
+        </div>
+    </div>
+</body>
+
+</html>

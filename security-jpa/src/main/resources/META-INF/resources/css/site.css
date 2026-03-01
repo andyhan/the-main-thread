@@ -1,0 +1,124 @@
+/* Minimal corporate layout and typography */
+:root {
+  --font-sans: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --color-text: #1a1a1a;
+  --color-muted: #555;
+  --color-border: #e0e0e0;
+  --color-error: #c00;
+  --color-link: #0066cc;
+  --max-width: 42rem;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  line-height: 1.5;
+  color: var(--color-text);
+  margin: 0;
+  padding: 2rem 1.5rem;
+  min-height: 100vh;
+}
+
+.layout {
+  max-width: var(--max-width);
+  margin: 0 auto;
+}
+
+h1 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin: 0 0 1.5rem;
+  letter-spacing: -0.02em;
+}
+
+p {
+  margin: 0 0 1rem;
+}
+
+a {
+  color: var(--color-link);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+.error {
+  color: var(--color-error);
+  margin-bottom: 1rem;
+}
+
+.form-group {
+  margin-bottom: 1rem;
+}
+
+.form-group label {
+  display: block;
+  font-weight: 500;
+  margin-bottom: 0.25rem;
+  color: var(--color-text);
+}
+
+input[type="text"],
+input[type="password"] {
+  width: 100%;
+  max-width: 20rem;
+  padding: 0.5rem 0.75rem;
+  font: inherit;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+}
+
+button {
+  font: inherit;
+  padding: 0.5rem 1rem;
+  background: var(--color-text);
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #333;
+}
+
+.nav-links {
+  margin: 1rem 0;
+}
+
+.nav-links a + a {
+  margin-left: 0.5rem;
+}
+
+.nav-links a::after {
+  content: " · ";
+  color: var(--color-muted);
+  margin-left: 0.5rem;
+  text-decoration: none;
+}
+
+.nav-links a:last-child::after {
+  display: none;
+}
+
+.inline-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.inline-actions form {
+  margin: 0;
+}
+
+.muted {
+  color: var(--color-muted);
+  font-size: 0.9rem;
+}
