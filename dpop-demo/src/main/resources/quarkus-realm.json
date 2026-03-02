@@ -1,0 +1,45 @@
+{
+  "id": "quarkus",
+  "realm": "quarkus",
+  "enabled": true,
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "roles": {
+    "realm": [
+      { "name": "user", "composite": false, "clientRole": false },
+      { "name": "account-viewer", "composite": false, "clientRole": false },
+      { "name": "offline_access", "composite": false, "clientRole": false },
+      { "name": "uma_authorization", "composite": false, "clientRole": false },
+      { "name": "default-roles-quarkus", "composite": true, "clientRole": false, "composites": { "realm": ["offline_access", "uma_authorization"] } }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "dpop-api",
+      "name": "DPoP Demo API",
+      "enabled": true,
+      "publicClient": true,
+      "directAccessGrantsEnabled": true,
+      "standardFlowEnabled": true,
+      "protocol": "openid-connect",
+      "fullScopeAllowed": true,
+      "defaultClientScopes": ["web-origins", "acr", "roles", "profile", "basic", "email"],
+      "optionalClientScopes": ["address", "phone", "offline_access", "microprofile-jwt"]
+    }
+  ],
+  "users": [
+    {
+      "username": "alice",
+      "enabled": true,
+      "emailVerified": false,
+      "realmRoles": ["user", "account-viewer"],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "alice",
+          "temporary": false
+        }
+      ]
+    }
+  ]
+}

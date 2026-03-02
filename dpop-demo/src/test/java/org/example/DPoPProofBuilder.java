@@ -19,7 +19,7 @@ import com.nimbusds.jwt.SignedJWT;
 
 /**
  * Builds a DPoP proof JWT (RFC 9449) for use in tests.
- * The proof binds the request (method, URL) and access token (ath) to the client's key.
+ * The proof binds the request (method, URL) and optionally the access token (ath) and nonce to the client's key.
  */
 public final class DPoPProofBuilder {
 
@@ -27,11 +27,43 @@ public final class DPoPProofBuilder {
     }
 
     /**
-     * Builds a signed DPoP proof JWT.
+     * Builds a DPoP proof for the Keycloak token endpoint (no ath, no nonce).
+     * Used when requesting an access token; Keycloak binds the token to this proof's public key.
+     *
+     * @param clientKeyPair   client's RSA key pair
+     * @param method          HTTP method (POST for token endpoint)
+     * @param tokenEndpointUrl full token endpoint URL (e.g. http://localhost:8180/realms/quarkus/protocol/openid-connect/token)
+     * @return signed DPoP proof JWT string
+     */
+    public static String buildForKeycloak(
+            java.security.KeyPair clientKeyPair,
+            String method,
+            String tokenEndpointUrl) throws Exception {
+        RSAPrivateKey privateKey = (RSAPrivateKey) clientKeyPair.getPrivate();
+        JWK jwk = new RSAKey.Builder((java.security.interfaces.RSAPublicKey) clientKeyPair.getPublic()).build();
+
+        JWSHeader header = new JWSHeader.Builder(JWSAlgorithm.RS256)
+                .type(new JOSEObjectType("dpop+jwt"))
+                .jwk(jwk)
+                .build();
+
+        JWTClaimsSet.Builder claimsBuilder = new JWTClaimsSet.Builder()
+                .claim("iat", Instant.now().getEpochSecond())
+                .claim("jti", UUID.randomUUID().toString())
+                .claim("htm", method)
+                .claim("htu", tokenEndpointUrl);
+        SignedJWT signedJWT = new SignedJWT(header, claimsBuilder.build());
+        JWSSigner signer = new RSASSASigner(privateKey);
+        signedJWT.sign(signer);
+        return signedJWT.serialize();
+    }
+
+    /**
+     * Builds a signed DPoP proof JWT for use when calling the Quarkus API (includes ath; nonce optional).
      *
      * @param clientKeyPair  client's RSA key pair (proof is signed with the private key)
      * @param accessToken    the access token (used to compute ath)
-     * @param nonce          server-issued nonce from a 401 response
+     * @param nonce          server-issued nonce from a 401 response, or null if not yet challenged
      * @param method         HTTP method (e.g. GET)
      * @param url            full request URL (e.g. http://localhost:8081/accounts/ACC-001/balance)
      * @return signed DPoP proof JWT string
@@ -55,14 +87,16 @@ public final class DPoPProofBuilder {
                 .jwk(jwk)
                 .build();
 
-        JWTClaimsSet claims = new JWTClaimsSet.Builder()
+        JWTClaimsSet.Builder claimsBuilder = new JWTClaimsSet.Builder()
                 .claim("iat", Instant.now().getEpochSecond())
                 .claim("jti", UUID.randomUUID().toString())
-                .claim("nonce", nonce)
                 .claim("ath", ath)
                 .claim("htm", method)
-                .claim("htu", url)
-                .build();
+                .claim("htu", url);
+        if (nonce != null && !nonce.isBlank()) {
+            claimsBuilder.claim("nonce", nonce);
+        }
+        JWTClaimsSet claims = claimsBuilder.build();
 
         SignedJWT signedJWT = new SignedJWT(header, claims);
         JWSSigner signer = new RSASSASigner(privateKey);

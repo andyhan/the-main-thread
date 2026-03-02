@@ -1,8 +1,7 @@
 package org.example;
 
-import org.eclipse.microprofile.jwt.JsonWebToken;
-
 import io.quarkus.security.Authenticated;
+import io.quarkus.security.identity.SecurityIdentity;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.GET;
@@ -16,16 +15,17 @@ import jakarta.ws.rs.core.MediaType;
 public class BankAccountResource {
 
     @Inject
-    JsonWebToken accessToken;
+    SecurityIdentity identity;
 
     @GET
     @Path("/{accountId}/balance")
     @RolesAllowed("account-viewer")
     @Produces(MediaType.APPLICATION_JSON)
     public BalanceResponse getBalance(@PathParam("accountId") String accountId) {
+        String subject = identity.getPrincipal() != null ? identity.getPrincipal().getName() : null;
         return new BalanceResponse(
                 accountId,
-                accessToken.getSubject(),
+                subject,
                 1_234_567);
     }
 
