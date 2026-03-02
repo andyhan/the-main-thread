@@ -1,6 +1,8 @@
 package org.acme.security.jpa;
 
+import io.quarkus.oidc.AccessTokenCredential;
 import io.quarkus.oidc.OidcSession;
+import io.quarkus.security.identity.CurrentIdentityAssociation;
 import io.quarkus.security.identity.SecurityIdentity;
 import io.quarkus.vertx.http.runtime.security.FormAuthenticationMechanism;
 import io.smallrye.mutiny.Uni;
@@ -14,7 +16,7 @@ import jakarta.ws.rs.core.UriBuilder;
 public class LogoutResource {
 
     @Inject
-    SecurityIdentity identity;
+    CurrentIdentityAssociation currentIdentityAssociation;
 
     @Inject
     OidcSession oidcSession;
@@ -25,14 +27,16 @@ public class LogoutResource {
 
     @POST
     public Uni<Response> logout() {
-        if (identity.isAnonymous()) {
-            return Uni.createFrom().item(redirectToLogin());
-        }
-        try {
-            FormAuthenticationMechanism.logout(identity);
-            return Uni.createFrom().item(redirectToLogin());
-        } catch (Exception e) {
-            return oidcSession.logout().replaceWith(redirectToLogin());
-        }
+        return currentIdentityAssociation.getDeferredIdentity()
+                .flatMap(identity -> {
+                    if (identity.isAnonymous()) {
+                        return Uni.createFrom().item(redirectToLogin());
+                    }
+                    if (identity.getCredential(AccessTokenCredential.class) != null) {
+                        return oidcSession.logout().replaceWith(redirectToLogin());
+                    }
+                    FormAuthenticationMechanism.logout(identity);
+                    return Uni.createFrom().item(redirectToLogin());
+                });
     }
 }
