@@ -1,0 +1,16 @@
+# src/main/compose/compose.yaml
+# Exposed ports are required so Quarkus ComposeLocator can discover the services (port 5432 → datasource, 6379 → Redis).
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: test
+      POSTGRES_DB: quarkus
+    ports:
+      - "5432"
+
+  redis:
+    image: redis:7
+    ports:
+      - "6379"
