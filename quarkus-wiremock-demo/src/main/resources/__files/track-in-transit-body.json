@@ -1,0 +1,20 @@
+{
+    "tracking_number": "SWIFT12345678",
+    "status_code": "IT",
+    "status_message": "Package is in transit",
+    "estimated_delivery": "2026-03-20T18:00:00Z",
+    "events": [
+        {
+            "timestamp": "2026-03-18T14:22:00Z",
+            "location": "Memphis, TN",
+            "event_code": "ARR",
+            "description": "Arrived at sorting facility"
+        },
+        {
+            "timestamp": "2026-03-17T09:10:00Z",
+            "location": "Atlanta, GA",
+            "event_code": "DEP",
+            "description": "Departed origin facility"
+        }
+    ]
+}
