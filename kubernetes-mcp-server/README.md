@@ -56,4 +56,4 @@ If you want to learn more about building native executables, please consult <htt
 ## Related Guides
 
 - SmallRye Health ([guide](https://quarkus.io/guides/smallrye-health)): Monitor service health
-- MCP Server - HTTP/SSE ([guide](https://docs.quarkiverse.io/quarkus-mcp-server/dev/index.html)): This extension enables developers to implement the MCP server features easily.
+- MCP Server - HTTP ([guide](https://docs.quarkiverse.io/quarkus-mcp-server/dev/index.html)): Streamable HTTP at `/mcp` (legacy SSE at `/mcp/sse` is deprecated).
