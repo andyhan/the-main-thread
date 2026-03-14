@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ISS Tracker</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background: #0a0e1a;
+            color: #e0e8ff;
+            font-family: Arial, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 2rem 1rem;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+            color: #7fbbff;
+        }
+
+        #status {
+            font-size: 0.9rem;
+            color: #8aa6d6;
+            margin-bottom: 1.5rem;
+            min-height: 1.2rem;
+        }
+
+        #map-container {
+            position: relative;
+            width: 100%;
+            max-width: 960px;
+            border: 1px solid #1f3658;
+            border-radius: 8px;
+            overflow: hidden;
+            background: #071020;
+        }
+
+        #world-map {
+            width: 100%;
+            display: block;
+        }
+
+        #path-overlay {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        #path-overlay polyline {
+            fill: none;
+            stroke: #7fbbff;
+            stroke-width: 2;
+            stroke-opacity: 0.5;
+        }
+
+        #iss-marker {
+            position: absolute;
+            width: 24px;
+            height: 24px;
+            transform: translate(-50%, -50%);
+            transition: left 1s ease, top 1s ease;
+            pointer-events: none;
+        }
+
+        #iss-marker::before {
+            content: "🛰️";
+            font-size: 22px;
+            filter: drop-shadow(0 0 6px #7fbbff);
+        }
+
+        #coords {
+            margin-top: 1rem;
+            font-size: 0.95rem;
+        }
+
+        #coords span {
+            color: #ffffff;
+        }
+
+        footer {
+            margin-top: 2rem;
+            font-size: 0.8rem;
+            color: #8aa6d6;
+        }
+
+        footer a {
+            color: #7fbbff;
+            text-decoration: none;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>ISS Real-Time Tracker</h1>
+    <div id="status">Connecting to live feed...</div>
+
+    <div id="map-container">
+        <img id="world-map"
+            src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/80/World_map_-_low_resolution.svg/1280px-World_map_-_low_resolution.svg.png"
+            alt="World map">
+        <svg id="path-overlay" viewBox="0 0 1280 640" preserveAspectRatio="none"></svg>
+        <div id="iss-marker"></div>
+    </div>
+
+    <div id="coords">
+        Lat: <span id="lat">-</span>
+        &nbsp;&nbsp;
+        Lon: <span id="lon">-</span>
+        &nbsp;&nbsp;
+        Updated: <span id="updated">-</span>
+    </div>
+
+    <footer>
+        Data from <a href="https://open-notify.org/" target="_blank">Open Notify</a>
+    </footer>
+
+    <script>
+        const MAP_WIDTH = 1280;
+        const MAP_HEIGHT = 640;
+
+        const marker = document.getElementById("iss-marker");
+        const status = document.getElementById("status");
+        const latEl = document.getElementById("lat");
+        const lonEl = document.getElementById("lon");
+        const updatedEl = document.getElementById("updated");
+
+        const pathOverlay = document.getElementById("path-overlay");
+
+        function placeMarker(pixelX, pixelY) {
+            const leftPercent = (pixelX / MAP_WIDTH) * 100;
+            const topPercent = (pixelY / MAP_HEIGHT) * 100;
+            marker.style.left = leftPercent + "%";
+            marker.style.top = topPercent + "%";
+        }
+
+        function drawPath(positions) {
+            const points = positions
+                .map(p => p.pixelX + "," + p.pixelY)
+                .join(" ");
+            let poly = pathOverlay.querySelector("polyline");
+            if (!poly) {
+                poly = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
+                pathOverlay.appendChild(poly);
+            }
+            poly.setAttribute("points", points);
+        }
+
+        function renderFix(fix) {
+            placeMarker(fix.pixelX, fix.pixelY);
+            latEl.textContent = fix.latitude.toFixed(4) + "°";
+            lonEl.textContent = fix.longitude.toFixed(4) + "°";
+            updatedEl.textContent = new Date(fix.updatedAt).toLocaleTimeString();
+        }
+
+        function fetchPath() {
+            fetch("/api/iss/positions")
+                .then(response => response.json())
+                .then(drawPath)
+                .catch(() => {});
+        }
+
+        fetch("/api/iss/position")
+            .then(response => response.status === 204 ? null : response.json())
+            .then(fix => {
+                if (fix) {
+                    renderFix(fix);
+                }
+                fetchPath();
+            });
+
+        const source = new EventSource("/api/iss/stream");
+
+        source.onopen = () => {
+            status.textContent = "Live - updates every 10 seconds";
+            status.style.color = "#3fd6a5";
+        };
+
+        source.onmessage = (event) => {
+            const fix = JSON.parse(event.data);
+            renderFix(fix);
+            fetchPath();
+        };
+
+        source.onerror = () => {
+            status.textContent = "Connection lost - reconnecting...";
+            status.style.color = "#ffb366";
+        };
+    </script>
+
+</body>
+
+</html>
