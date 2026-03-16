@@ -1,0 +1,20 @@
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: quarkus-build-run-
+spec:
+  pipelineRef:
+    name: quarkus-build
+  params:
+    - name: repo-url
+      value: https://github.com/myfear/quarkus-tekton-test.git
+    - name: revision
+      value: main
+    - name: maven-image
+      value: maven:3.9.14-eclipse-temurin-25
+    - name: image
+      value: registry.kube-system.svc.cluster.local:80/pipeline-demo:latest
+  workspaces:
+    - name: shared-source
+      persistentVolumeClaim:
+        claimName: pipeline-source-pvc

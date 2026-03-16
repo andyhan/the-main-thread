@@ -1,0 +1,30 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: maven-build
+spec:
+  workspaces:
+    - name: source
+      description: The workspace containing the cloned source code
+  params:
+    - name: maven-image
+      type: string
+      default: maven:3.9.6-eclipse-temurin-21
+      description: The Maven container image to use for the build
+    - name: goals
+      type: array
+      default:
+        - package
+        - -DskipTests
+      description: Maven goals to execute
+  steps:
+    - name: run-maven
+      image: $(params.maven-image)
+      workingDir: $(workspaces.source.path)
+      command:
+        - mvn
+      args:
+        - $(params.goals[*])
+      env:
+        - name: MAVEN_OPTS
+          value: "-Dmaven.repo.local=/workspace/.m2/repository"

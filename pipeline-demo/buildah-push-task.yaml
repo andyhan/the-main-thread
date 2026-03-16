@@ -1,0 +1,44 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: buildah-push
+spec:
+  workspaces:
+    - name: source
+      description: The workspace containing the built source and target directory
+  params:
+    - name: image
+      type: string
+      description: The destination image reference including registry and tag
+    - name: containerfile-path
+      type: string
+      default: Containerfile
+      description: Path to the Containerfile relative to the workspace root
+    - name: storage-driver
+      type: string
+      default: vfs
+      description: The storage driver for buildah. Use vfs inside Kubernetes pods.
+  steps:
+    - name: build-and-push
+      image: quay.io/buildah/stable:latest
+      workingDir: $(workspaces.source.path)
+      securityContext:
+        privileged: true
+      script: |
+        #!/usr/bin/env bash
+        set -e
+
+        echo "Building image $(params.image)"
+        buildah --storage-driver=$(params.storage-driver) bud \
+          --tls-verify=false \
+          --layers \
+          -f $(params.containerfile-path) \
+          -t $(params.image) \
+          .
+
+        echo "Pushing image $(params.image)"
+        buildah --storage-driver=$(params.storage-driver) push \
+          --tls-verify=false \
+          $(params.image)
+
+        echo "Done."
