@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{title}</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { background: #121212; color: #e0e0e0; font-family: 'Segoe UI', sans-serif; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        
+        /* Signal Badges */
+        #signal-box { padding: 10px 20px; border-radius: 5px; display: inline-block; font-weight: bold; margin-bottom: 20px;}
+        .NORMAL { background: #333; color: #888; }
+        .BREAKOUT_UP { background: #00c853; color: #fff; box-shadow: 0 0 15px #00c853;}
+        .BREAKOUT_DOWN { background: #d50000; color: #fff; box-shadow: 0 0 15px #d50000;}
+        .SQUEEZE { background: #ffd600; color: #000; }
+        
+        /* Layout */
+        .header { text-align: center; margin-bottom: 20px; }
+        .main-content { display: grid; grid-template-columns: 1fr 300px; gap: 20px; }
+        .chart-container { position: relative; }
+        
+        /* Metrics Panel */
+        .metrics-panel {
+            background: #1e1e1e;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 20px;
+            height: fit-content;
+        }
+        .metrics-panel h3 {
+            margin-top: 0;
+            color: #00e5ff;
+            border-bottom: 2px solid #00e5ff;
+            padding-bottom: 10px;
+        }
+        .metric-group {
+            margin-bottom: 20px;
+        }
+        .metric-group h4 {
+            color: #888;
+            font-size: 0.9em;
+            margin: 0 0 8px 0;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .metric-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #2a2a2a;
+        }
+        .metric-item:last-child {
+            border-bottom: none;
+        }
+        .metric-label {
+            color: #aaa;
+        }
+        .metric-value {
+            color: #fff;
+            font-weight: bold;
+        }
+        .metric-value.highlight {
+            color: #00e5ff;
+        }
+        .gatherers-badge {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 12px;
+            border-radius: 6px;
+            margin-top: 15px;
+            text-align: center;
+        }
+        .gatherers-badge strong {
+            display: block;
+            font-size: 1.1em;
+            margin-bottom: 5px;
+        }
+        .gatherers-badge small {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 0.85em;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h2>Bitcoin (BTC/USDT) Real-Time Bollinger Bands</h2>
+        <div id="signal-box" class="NORMAL">INITIALIZING STREAM...</div>
+    </div>
+    
+    <div class="main-content">
+        <div class="chart-container">
+            <canvas id="chart"></canvas>
+        </div>
+        
+        <div class="metrics-panel">
+            <h3>Gatherers4j Metrics</h3>
+            
+            <div class="metric-group">
+                <h4>Stream Processing</h4>
+                <div class="metric-item">
+                    <span class="metric-label">Window Size</span>
+                    <span class="metric-value highlight" id="window-size">20</span>
+                </div>
+                <div class="metric-item">
+                    <span class="metric-label">Debounce Rate</span>
+                    <span class="metric-value highlight">50ms</span>
+                </div>
+                <div class="metric-item">
+                    <span class="metric-label">Window Step</span>
+                    <span class="metric-value highlight">1</span>
+                </div>
+            </div>
+            
+            <div class="metric-group">
+                <h4>Current Statistics</h4>
+                <div class="metric-item">
+                    <span class="metric-label">Mean (SMA)</span>
+                    <span class="metric-value" id="mean-value">-</span>
+                </div>
+                <div class="metric-item">
+                    <span class="metric-label">Std Deviation</span>
+                    <span class="metric-value" id="stddev-value">-</span>
+                </div>
+                <div class="metric-item">
+                    <span class="metric-label">Band Width</span>
+                    <span class="metric-value" id="band-width">-</span>
+                </div>
+                <div class="metric-item">
+                    <span class="metric-label">Price Position</span>
+                    <span class="metric-value" id="price-position">-</span>
+                </div>
+            </div>
+            
+            <div class="metric-group">
+                <h4>Time Window</h4>
+                <div class="metric-item">
+                    <span class="metric-label">Data Points</span>
+                    <span class="metric-value" id="data-points">0</span>
+                </div>
+                <div class="metric-item">
+                    <span class="metric-label">Time Range</span>
+                    <span class="metric-value" id="time-range">-</span>
+                </div>
+            </div>
+            
+            <div class="gatherers-badge">
+                <strong>Powered by Gatherers4j</strong>
+                <small>Sliding Window + Debounce</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const ctx = document.getElementById('chart').getContext('2d');
+    const WINDOW_SIZE = 20;
+    const K = 2.0;
+    const MAX_DATA_POINTS = 100;
+    
+    const chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [
+                {
+                    label: 'Upper Band',
+                    data: [],
+                    borderColor: '#4caf50', // Green for upper band
+                    borderWidth: 2,
+                    pointRadius: 0,
+                    fill: false
+                },
+                {
+                    label: 'Lower Band',
+                    data: [],
+                    borderColor: '#f44336', // Red for lower band
+                    borderWidth: 2,
+                    pointRadius: 0,
+                    fill: {
+                        target: '-1', // Fill to the dataset before this (Upper Band)
+                        color: 'rgba(128, 128, 128, 0.15)' // Subtle gray fill between bands
+                    }
+                },
+                {
+                    label: 'Middle Band (SMA)',
+                    data: [],
+                    borderColor: '#ff9800', // Orange for middle band (mean)
+                    borderWidth: 1.5,
+                    borderDash: [5, 5], // Dashed line
+                    pointRadius: 0,
+                    fill: false
+                },
+                {
+                    label: 'BTC Price',
+                    data: [],
+                    borderColor: '#00e5ff',
+                    borderWidth: 2.5,
+                    pointRadius: 0
+                }
+            ]
+        },
+        options: {
+            animation: false,
+            interaction: { intersect: false },
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top',
+                    labels: {
+                        color: '#e0e0e0',
+                        usePointStyle: true,
+                        padding: 15
+                    }
+                },
+                tooltip: {
+                    mode: 'index',
+                    intersect: false,
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    titleColor: '#e0e0e0',
+                    bodyColor: '#e0e0e0',
+                    borderColor: '#333',
+                    borderWidth: 1
+                }
+            },
+            scales: {
+                y: { 
+                    grid: { color: '#333' },
+                    ticks: { color: '#aaa' }
+                },
+                x: { 
+                    display: true,
+                    grid: { color: '#2a2a2a' },
+                    ticks: { 
+                        color: '#aaa',
+                        maxRotation: 45,
+                        minRotation: 45,
+                        maxTicksLimit: 10
+                    }
+                }
+            }
+        }
+    });
+
+    const evtSource = new EventSource("/stream");
+    const box = document.getElementById("signal-box");
+
+    evtSource.onopen = function(event) {
+        console.log("EventSource connection opened");
+        box.innerText = "CONNECTING... (waiting for data)";
+    };
+
+    evtSource.onerror = function(event) {
+        console.error("EventSource error:", event);
+        box.className = "NORMAL";
+        box.innerText = "CONNECTION ERROR - Check console";
+    };
+
+    function updateMetrics(data) {
+        // Calculate std deviation from bands: stdDev = (upper - mean) / K
+        const stdDev = (data.upperBand - data.middleBand) / K;
+        const bandWidth = data.upperBand - data.lowerBand;
+        
+        // Calculate price position as percentage within bands (0% = lower, 100% = upper)
+        const pricePosition = ((data.currentPrice - data.lowerBand) / bandWidth) * 100;
+        
+        // Update metric values
+        document.getElementById('mean-value').textContent = '$' + data.middleBand.toFixed(2);
+        document.getElementById('stddev-value').textContent = stdDev.toFixed(2);
+        document.getElementById('band-width').textContent = '$' + bandWidth.toFixed(2);
+        document.getElementById('price-position').textContent = pricePosition.toFixed(1) + '%';
+        document.getElementById('data-points').textContent = chart.data.labels.length;
+        
+        // Update time range
+        if (chart.data.labels.length > 0) {
+            const labels = chart.data.labels;
+            document.getElementById('time-range').textContent = 
+                labels[0] + ' - ' + labels[labels.length - 1];
+        }
+    }
+
+    evtSource.onmessage = function(event) {
+        try {
+            const data = JSON.parse(event.data);
+            const time = new Date().toLocaleTimeString();
+
+            // Update Signal Badge
+            box.className = data.signal;
+            box.innerText = data.signal + " ($" + data.currentPrice.toFixed(2) + ")";
+
+            // Update Chart
+            if (chart.data.labels.length >= MAX_DATA_POINTS) {
+                chart.data.labels.shift();
+                chart.data.datasets.forEach(d => d.data.shift());
+            }
+
+            chart.data.labels.push(time);
+            chart.data.datasets[0].data.push(data.upperBand);
+            chart.data.datasets[1].data.push(data.lowerBand);
+            chart.data.datasets[2].data.push(data.middleBand); // Middle band (mean/SMA)
+            chart.data.datasets[3].data.push(data.currentPrice);
+            
+            // Update metrics panel
+            updateMetrics(data);
+            
+            chart.update('none'); // 'none' mode for better performance
+        } catch (e) {
+            console.error("Error parsing event data:", e, event.data);
+        }
+    };
+</script>
+</body>
+</html>
