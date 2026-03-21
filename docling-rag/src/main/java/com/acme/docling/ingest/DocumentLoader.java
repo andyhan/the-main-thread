@@ -12,6 +12,12 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.CompletionStage;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.Metadata;
@@ -21,14 +27,15 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import io.quarkus.logging.Log;
-import io.quarkus.runtime.Startup;
-import jakarta.annotation.PostConstruct;
+import io.quarkus.runtime.StartupEvent;
+import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 
 @Singleton
-@Startup
 public class DocumentLoader {
+
+    private static final Executor VIRTUAL_THREAD_EXECUTOR = Executors.newVirtualThreadPerTaskExecutor();
 
     @Inject
     EmbeddingStore<TextSegment> store;
@@ -51,72 +58,94 @@ public class DocumentLoader {
             "documents/cloudx-enterprise.md");
 
     /**
-     * Quarkus only allows {@code @RunOnVirtualThread} on framework entrypoints
-     * (REST,
-     * schedulers, etc.), not on {@code @PostConstruct}. We start a platform virtual
-     * thread here instead so blocking DoclingServeApi (async submit-and-poll) work does not run on the
-     * Vert.x
-     * event loop.
+     * Quarkus only allows {@code @RunOnVirtualThread} on framework entrypoints (REST, etc.), not on
+     * {@code @Observes} methods. We offload onto {@link #VIRTUAL_THREAD_EXECUTOR} so classpath I/O and
+     * pipeline wiring do not run on the Vert.x event loop. Docling completes via {@link CompletionStage}
+     * without {@code join()}; embedding runs on the same executor in {@code thenAcceptAsync}.
      */
-    @PostConstruct
-    void startIngestionOnVirtualThread() {
-        Thread.ofVirtual()
-                .name("document-ingestion")
-                .start(() -> {
-                    try {
-                        ingestDocuments();
-                    } catch (Exception e) {
-                        Log.errorf(e, "Document ingestion failed");
+    void onStart(@Observes StartupEvent event) {
+        VIRTUAL_THREAD_EXECUTOR.execute(() -> {
+            try {
+                ingestDocumentsAsync().whenComplete((ok, err) -> {
+                    if (err != null) {
+                        Log.errorf(unwrap(err), "Document ingestion failed");
                     }
                 });
+            } catch (Exception e) {
+                Log.errorf(e, "Document ingestion failed");
+            }
+        });
     }
 
-    private void ingestDocuments() throws Exception {
+    private CompletionStage<Void> ingestDocumentsAsync() {
         Log.info("Starting document ingestion...");
         List<Document> docs = new ArrayList<>();
 
         ingestClasspathTextDocs(docs);
 
-        // Optional: project-relative path when running `mvn quarkus:dev` from the repo root
+        CompletionStage<List<Document>> withLocal;
         Path localDocs = Path.of("src/main/resources/documents");
         if (Files.exists(localDocs) && Files.isDirectory(localDocs)) {
-            ingestLocalFiles(localDocs, docs);
+            withLocal = ingestLocalFilesAsync(localDocs, docs);
+        } else {
+            withLocal = CompletableFuture.completedFuture(docs);
         }
 
-        // Path 2: remote URLs from a config file or hardcoded list
-        // In production, this list would come from a database or config source
-        List<URI> remoteDocuments = loadRemoteDocumentUris();
-        for (URI uri : remoteDocuments) {
-            try {
-                Log.infof("Ingesting remote document: %s", uri);
-                String markdown = converter.toMarkdownFromUrl(uri);
-                Map<String, String> meta = new HashMap<>();
-                meta.put("source", uri.toString());
-                meta.put("format", "remote");
-                docs.add(Document.document(markdown, new Metadata(meta)));
-            } catch (Exception e) {
-                Log.errorf(e, "Failed to ingest remote document: %s", uri);
-            }
-        }
-
-        if (docs.isEmpty()) {
-            Log.warn("No documents ingested.");
-            return;
-        }
-
-        embedAndStore(docs);
-        Log.info("Startup document ingestion complete. Quarkus may already accept HTTP traffic; until this line appears, /bot can see an empty or partial index.");
+        return withLocal
+                .thenCompose(this::ingestRemoteUrlsAsync)
+                .thenAcceptAsync(finalDocs -> {
+                    if (finalDocs.isEmpty()) {
+                        Log.warn("No documents ingested.");
+                        return;
+                    }
+                    embedAndStore(finalDocs);
+                    Log.info("Startup document ingestion complete. Quarkus may already accept HTTP traffic; until this line appears, /bot can see an empty or partial index.");
+                }, VIRTUAL_THREAD_EXECUTOR);
     }
 
     /**
-     * Convert a remote URL via Docling Serve and embed the resulting Markdown (same pipeline as startup).
+     * Convert a remote URL via Docling Serve and embed the resulting Markdown (async end-to-end).
+     */
+    public CompletionStage<Void> ingestRemoteDocumentAsync(URI uri) {
+        return converter.toMarkdownFromUrlAsync(uri)
+                .thenAcceptAsync(markdown -> {
+                    Map<String, String> meta = new HashMap<>();
+                    meta.put("source", uri.toString());
+                    meta.put("format", "remote");
+                    ingestMarkdownDocument(markdown, new Metadata(meta));
+                }, VIRTUAL_THREAD_EXECUTOR);
+    }
+
+    /**
+     * Starts {@link #ingestRemoteDocumentAsync(URI)} and returns immediately. Completion or failure is
+     * logged only—use for HTTP handlers that should answer before ingestion finishes.
+     */
+    public void ingestRemoteDocumentInBackground(URI uri) {
+        ingestRemoteDocumentAsync(uri).whenComplete((ok, err) -> {
+            if (err != null) {
+                Log.errorf(unwrap(err), "Background URL ingest failed: %s", uri);
+            } else {
+                Log.infof("Background URL ingest finished: %s", uri);
+            }
+        });
+    }
+
+    /**
+     * Blocking convenience for callers that need to wait for completion (uses {@code join()}).
      */
     public void ingestRemoteDocument(URI uri) throws IOException {
-        String markdown = converter.toMarkdownFromUrl(uri);
-        Map<String, String> meta = new HashMap<>();
-        meta.put("source", uri.toString());
-        meta.put("format", "remote");
-        ingestMarkdownDocument(markdown, new Metadata(meta));
+        try {
+            ingestRemoteDocumentAsync(uri).toCompletableFuture().join();
+        } catch (CompletionException e) {
+            Throwable c = unwrap(e);
+            if (c instanceof IOException ioe) {
+                throw ioe;
+            }
+            if (c instanceof RuntimeException re) {
+                throw re;
+            }
+            throw new IOException(c);
+        }
     }
 
     /**
@@ -150,35 +179,88 @@ public class DocumentLoader {
         }
     }
 
-    private void ingestLocalFiles(Path directory, List<Document> docs) {
-        int success = 0, failure = 0, skipped = 0;
+    private CompletionStage<List<Document>> ingestLocalFilesAsync(Path directory, List<Document> seedDocs) {
+        final List<Path> paths;
         try (var stream = Files.list(directory)) {
-            for (Path filePath : stream.filter(Files::isRegularFile).toList()) {
-                File file = filePath.toFile();
-                String name = file.getName();
-                String ext = extension(name);
+            paths = stream.filter(Files::isRegularFile).toList();
+        } catch (Exception e) {
+            Log.errorf(e, "Failed to read documents directory");
+            return CompletableFuture.completedFuture(seedDocs);
+        }
 
-                if (!ALLOWED_EXTENSIONS.contains(ext)) {
-                    skipped++;
-                    continue;
-                }
+        AtomicInteger success = new AtomicInteger();
+        AtomicInteger failure = new AtomicInteger();
+        AtomicInteger skipped = new AtomicInteger();
 
-                try {
-                    String markdown = converter.toMarkdown(file);
+        CompletionStage<List<Document>> chain = CompletableFuture.completedFuture(new ArrayList<>(seedDocs));
+        for (Path filePath : paths) {
+            chain = chain.thenCompose(docs -> ingestOneLocalFile(filePath, docs, success, failure, skipped));
+        }
+        return chain.thenApply(docs -> {
+            Log.infof("Local ingestion: success=%d, failures=%d, skipped=%d",
+                    success.get(), failure.get(), skipped.get());
+            return docs;
+        });
+    }
+
+    private CompletionStage<List<Document>> ingestOneLocalFile(
+            Path filePath,
+            List<Document> docs,
+            AtomicInteger success,
+            AtomicInteger failure,
+            AtomicInteger skipped) {
+        File file = filePath.toFile();
+        String name = file.getName();
+        String ext = extension(name);
+
+        if (!ALLOWED_EXTENSIONS.contains(ext)) {
+            skipped.incrementAndGet();
+            return CompletableFuture.completedFuture(docs);
+        }
+
+        return converter.toMarkdownAsync(file)
+                .handle((markdown, err) -> {
+                    if (err != null) {
+                        failure.incrementAndGet();
+                        Log.errorf(unwrap(err), "Failed to process: %s", name);
+                        return docs;
+                    }
                     Map<String, String> meta = new HashMap<>();
                     meta.put("file", name);
                     meta.put("format", ext);
                     docs.add(Document.document(markdown, new Metadata(meta)));
-                    success++;
-                } catch (Exception e) {
-                    failure++;
-                    Log.errorf(e, "Failed to process: %s", name);
-                }
-            }
-        } catch (Exception e) {
-            Log.errorf(e, "Failed to read documents directory");
+                    success.incrementAndGet();
+                    return docs;
+                });
+    }
+
+    private CompletionStage<List<Document>> ingestRemoteUrlsAsync(List<Document> docs) {
+        List<URI> remoteDocuments = loadRemoteDocumentUris();
+        CompletionStage<List<Document>> chain = CompletableFuture.completedFuture(docs);
+        for (URI uri : remoteDocuments) {
+            chain = chain.thenCompose(d -> ingestOneRemote(uri, d));
         }
-        Log.infof("Local ingestion: success=%d, failures=%d, skipped=%d", success, failure, skipped);
+        return chain;
+    }
+
+    private CompletionStage<List<Document>> ingestOneRemote(URI uri, List<Document> docs) {
+        Log.infof("Ingesting remote document: %s", uri);
+        return converter.toMarkdownFromUrlAsync(uri)
+                .handle((markdown, err) -> {
+                    if (err != null) {
+                        Log.errorf(unwrap(err), "Failed to ingest remote document: %s", uri);
+                        return docs;
+                    }
+                    Map<String, String> meta = new HashMap<>();
+                    meta.put("source", uri.toString());
+                    meta.put("format", "remote");
+                    docs.add(Document.document(markdown, new Metadata(meta)));
+                    return docs;
+                });
+    }
+
+    private static Throwable unwrap(Throwable t) {
+        return t instanceof CompletionException && t.getCause() != null ? t.getCause() : t;
     }
 
     private void embedAndStore(List<Document> docs) {

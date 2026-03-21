@@ -3,7 +3,6 @@ package com.acme.docling;
 import java.net.URI;
 
 import com.acme.docling.ingest.DocumentLoader;
-import io.smallrye.common.annotation.RunOnVirtualThread;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.Consumes;
@@ -18,11 +17,13 @@ public class IngestionResource {
     @Inject
     DocumentLoader documentLoader;
 
+    /**
+     * Accepts the URL, returns 202 immediately, and runs conversion + embedding in the background.
+     */
     @POST
     @Path("/url")
     @Consumes(MediaType.APPLICATION_JSON)
-    @RunOnVirtualThread
-    public Response ingestUrl(RemoteIngestRequest request) throws Exception {
+    public Response ingestUrl(RemoteIngestRequest request) {
         if (request == null || request.url() == null || request.url().isBlank()) {
             throw new BadRequestException("url must be provided");
         }
@@ -40,7 +41,7 @@ public class IngestionResource {
             throw new BadRequestException("url must be an absolute http or https URL");
         }
 
-        documentLoader.ingestRemoteDocument(uri);
+        documentLoader.ingestRemoteDocumentInBackground(uri);
 
         return Response.accepted().build();
     }
