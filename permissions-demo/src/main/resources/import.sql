@@ -1,0 +1,2 @@
+INSERT INTO shipment (id, tracking_number, destination, status) VALUES (1, 'SWS-001', 'Berlin', 'IN_TRANSIT');
+INSERT INTO shipment (id, tracking_number, destination, status) VALUES (2, 'SWS-002', 'Amsterdam', 'DELIVERED');
