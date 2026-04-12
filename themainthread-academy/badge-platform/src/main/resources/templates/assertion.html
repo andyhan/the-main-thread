@@ -1,0 +1,64 @@
+{#include layout.html}
+  {#title}Verify Credential — TheMainThread Academy{/title}
+  {#body}
+    <div style="max-width:680px;">
+
+      {#if assertion.revoked}
+      <div style="background:#fee2e2;border:1px solid #fca5a5;border-radius:var(--radius);padding:1rem 1.25rem;margin-bottom:1.5rem;">
+        <strong style="color:#991b1b;">This credential has been revoked.</strong>
+        {#if assertion.revokeReason}
+        <p style="color:#7f1d1d;margin-top:0.25rem;font-size:0.875rem;">{assertion.revokeReason}</p>
+        {/if}
+      </div>
+      {#else if assertion.isExpired()}
+      <div style="background:#fef3c7;border:1px solid #fcd34d;border-radius:var(--radius);padding:1rem 1.25rem;margin-bottom:1.5rem;">
+        <strong style="color:#92400e;">This credential has expired.</strong>
+      </div>
+      {#else}
+      <div style="background:#d1fae5;border:1px solid #6ee7b7;border-radius:var(--radius);padding:1rem 1.25rem;margin-bottom:1.5rem;">
+        <strong style="color:#065f46;">✓ This credential is valid and has been verified.</strong>
+      </div>
+      {/if}
+
+      <div style="display:flex;gap:1.5rem;align-items:center;flex-wrap:wrap;">
+        <img src="{assertion.template.imageUrl}" alt="{assertion.template.name}"
+             style="width:100px;height:100px;object-fit:contain;border:1px solid var(--border);border-radius:var(--radius);padding:0.75rem;background:white;">
+        <div>
+          <h1>{assertion.template.name}</h1>
+          <p class="meta">Awarded to <strong>{assertion.earner.name}</strong></p>
+          <p class="meta">Issued on {assertion.issuedOn.toString().substring(0,10)}</p>
+          {#if assertion.expiresAt}
+          <p class="meta">Expires {assertion.expiresAt.toString().substring(0,10)}</p>
+          {/if}
+        </div>
+      </div>
+
+      <h2>About this badge</h2>
+      <p>{assertion.template.description}</p>
+
+      <h2>Criteria</h2>
+      <p>{assertion.template.criteria}</p>
+
+      {#if !assertion.template.skillList().isEmpty()}
+      <h2>Skills attested</h2>
+      <div style="margin-top:0.5rem;">
+        {#for skill in assertion.template.skillList()}
+        <span class="tag">{skill.trim()}</span>
+        {/for}
+      </div>
+      {/if}
+
+      <h2>Verification</h2>
+      <p>This credential was issued by TheMainThread Academy and is cryptographically signed.
+         The assertion identifier is:</p>
+      <code style="display:block;background:#f3f4f6;padding:0.75rem;border-radius:4px;font-size:0.8rem;word-break:break-all;margin-top:0.5rem;">
+        {baseUrl}/assertions/{assertion.id}
+      </code>
+      <p style="margin-top:0.75rem;">
+        <a href="/assertions/{assertion.id}" style="color:var(--accent);font-size:0.875rem;">
+          View raw assertion JSON →
+        </a>
+      </p>
+    </div>
+  {/body}
+{/include}

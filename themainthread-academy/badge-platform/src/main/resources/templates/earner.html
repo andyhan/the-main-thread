@@ -1,0 +1,24 @@
+{#include layout.html}
+  {#title}{earner.name} — TheMainThread Academy{/title}
+  {#body}
+    <h1>{earner.name}</h1>
+    <p class="meta">{earner.email}</p>
+
+    {#if assertions.isEmpty()}
+      <p style="margin-top:2rem;color:var(--muted);">No badges earned yet.</p>
+    {#else}
+      <p class="meta" style="margin-top:0.5rem;">{assertions.size()} credential{#if assertions.size() != 1}s{/if} earned</p>
+      <div class="badge-grid">
+        {#for a in assertions}
+        <a href="/assertions/{a.id}" style="text-decoration:none;color:inherit;">
+          <div class="badge-card">
+            <img src="{a.template.imageUrl}" alt="{a.template.name}">
+            <div class="badge-name">{a.template.name}</div>
+            <div class="badge-date">{a.issuedOn.toString().substring(0,10)}</div>
+          </div>
+        </a>
+        {/for}
+      </div>
+    {/if}
+  {/body}
+{/include}

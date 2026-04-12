@@ -1,0 +1,39 @@
+{#include layout.html}
+  {#title}{template.name} — TheMainThread Academy{/title}
+  {#body}
+    <div style="display:flex;gap:2rem;align-items:flex-start;flex-wrap:wrap;">
+      <img src="{template.imageUrl}" alt="{template.name}"
+           style="width:140px;height:140px;object-fit:contain;border:1px solid var(--border);border-radius:var(--radius);padding:1rem;background:white;">
+      <div style="flex:1;min-width:280px;">
+        <h1>{template.name}</h1>
+        <p style="margin-top:0.75rem;">{template.description}</p>
+
+        <h2>Criteria</h2>
+        <p>{template.criteria}</p>
+
+        {#if !template.skillList().isEmpty()}
+        <h2>Skills</h2>
+        <div style="margin-top:0.5rem;">
+          {#for skill in template.skillList()}
+          <span class="tag">{skill.trim()}</span>
+          {/for}
+        </div>
+        {/if}
+      </div>
+    </div>
+
+    {#if !recentEarners.isEmpty()}
+    <h2>Recent earners</h2>
+    <div class="badge-grid">
+      {#for a in recentEarners}
+      <a href="/earners/{a.earner.id}" style="text-decoration:none;color:inherit;">
+        <div class="badge-card">
+          <div class="badge-name">{a.earner.name}</div>
+          <div class="badge-date">Earned {a.issuedOn.toString().substring(0,10)}</div>
+        </div>
+      </a>
+      {/for}
+    </div>
+    {/if}
+  {/body}
+{/include}

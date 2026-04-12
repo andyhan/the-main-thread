@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{#insert title}TheMainThread Academy{/insert}</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --ink: #1a1a2e;
+      --paper: #f8f7f4;
+      --accent: #e94560;
+      --muted: #6b7280;
+      --border: #e5e7eb;
+      --radius: 8px;
+      font-family: 'Georgia', serif;
+    }
+    body { background: var(--paper); color: var(--ink); min-height: 100vh; }
+    header {
+      border-bottom: 2px solid var(--ink);
+      padding: 1.25rem 2rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    header a { text-decoration: none; color: inherit; }
+    header .wordmark { font-size: 1.1rem; font-weight: 700; letter-spacing: -0.02em; }
+    header .wordmark span { color: var(--accent); }
+    main { max-width: 960px; margin: 0 auto; padding: 2.5rem 1.5rem; }
+    .badge-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 1.5rem;
+      margin-top: 2rem;
+    }
+    .badge-card {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+      text-align: center;
+      background: white;
+      transition: box-shadow 0.15s;
+    }
+    .badge-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
+    .badge-card img { width: 80px; height: 80px; object-fit: contain; margin-bottom: 0.75rem; }
+    .badge-card .badge-name { font-size: 0.9rem; font-weight: 600; }
+    .badge-card .badge-date { font-size: 0.78rem; color: var(--muted); margin-top: 0.25rem; }
+    .status-pill {
+      display: inline-block;
+      padding: 0.2rem 0.7rem;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .status-valid   { background: #d1fae5; color: #065f46; }
+    .status-revoked { background: #fee2e2; color: #991b1b; }
+    .status-expired { background: #fef3c7; color: #92400e; }
+    h1 { font-size: 2rem; font-weight: 700; letter-spacing: -0.03em; margin-bottom: 0.5rem; }
+    h2 { font-size: 1.25rem; font-weight: 600; margin: 2rem 0 0.75rem; }
+    p  { line-height: 1.65; color: #374151; }
+    .meta { color: var(--muted); font-size: 0.875rem; margin-top: 0.25rem; }
+    .tag {
+      display: inline-block;
+      background: var(--ink);
+      color: white;
+      font-size: 0.72rem;
+      padding: 0.2rem 0.55rem;
+      border-radius: 4px;
+      margin: 0.15rem;
+      font-family: monospace;
+      letter-spacing: 0.02em;
+    }
+    footer {
+      border-top: 1px solid var(--border);
+      text-align: center;
+      padding: 2rem;
+      color: var(--muted);
+      font-size: 0.8rem;
+      margin-top: 4rem;
+    }
+  </style>
+</head>
+<body>
+<header>
+  <a href="/">
+    <div class="wordmark">TheMainThread <span>Academy</span></div>
+  </a>
+</header>
+<main>
+  {#insert body /}
+</main>
+<footer>
+  Open Badge 2.0 compliant · TheMainThread Academy · Credentials you can verify
+</footer>
+</body>
+</html>
