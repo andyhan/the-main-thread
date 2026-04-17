@@ -1,0 +1,4 @@
+interface:
+  display_name: "Authentic Voice"
+  short_description: "Personal Main Thread voice pass"
+  default_prompt: "Use $authentic-voice to rewrite this draft in my personal Main Thread voice without changing the technical meaning."

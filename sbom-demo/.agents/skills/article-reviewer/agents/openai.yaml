@@ -1,0 +1,5 @@
+interface:
+  display_name: "Article Reviewer"
+  short_description: "Review technical drafts before publishing"
+  default_prompt: "Use $article-reviewer to review this technical draft for accuracy, code quality, teaching flow, and voice."
+

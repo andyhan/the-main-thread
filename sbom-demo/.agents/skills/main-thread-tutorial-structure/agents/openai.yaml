@@ -1,0 +1,4 @@
+interface:
+  display_name: "Main Thread Tutorial Structure"
+  short_description: "Shape Main Thread tutorial story beats"
+  default_prompt: "Use $main-thread-tutorial-structure to shape this tutorial with clear story beats, complete code, verification, and production framing."

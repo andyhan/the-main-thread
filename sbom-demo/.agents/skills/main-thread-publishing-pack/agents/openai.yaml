@@ -1,0 +1,4 @@
+interface:
+  display_name: "Main Thread Publishing Pack"
+  short_description: "Prepare publishing assets for articles"
+  default_prompt: "Use $main-thread-publishing-pack to create a publishing pack for this finished Main Thread article."
